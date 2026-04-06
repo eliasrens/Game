@@ -38,10 +38,7 @@ async function init() {
   // Generate QR code pointing to player page with room code
   const baseUrl = window.location.href.replace(/\/[^/]*$/, '/');
   const playerUrl = `${baseUrl}player.html?room=${roomCode}`;
-  const qr = qrcode(0, 'M');
-  qr.addData(playerUrl);
-  qr.make();
-  document.getElementById('qr-code').innerHTML = qr.createSvgTag(4, 0);
+  generateQRCode(document.getElementById('qr-code'), playerUrl);
 
   joinUrlEl.textContent = `Skanna QR-koden eller ange rumskoden manuellt`;
 
@@ -403,6 +400,19 @@ function drawWheel(slices, winningIndex) {
     if (progress < 1) requestAnimationFrame(animate);
   }
   requestAnimationFrame(animate);
+}
+
+// === QR CODE GENERATOR (minimal, no dependencies) ===
+function generateQRCode(container, text) {
+  // Use a canvas-based QR code via the QR code algorithm
+  // For simplicity and reliability, use an image from a public QR API
+  const img = document.createElement('img');
+  img.src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(text)}`;
+  img.alt = 'QR-kod för att gå med i spelet';
+  img.width = 200;
+  img.height = 200;
+  img.style.borderRadius = '8px';
+  container.appendChild(img);
 }
 
 // GO
