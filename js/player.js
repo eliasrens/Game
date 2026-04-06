@@ -211,6 +211,33 @@ function handleEvent(event, roomData) {
       }
       break;
 
+    case 'category-select':
+      diceBtn.classList.add('hidden');
+      if (event.chooserId === myId) {
+        bjArea.classList.remove('hidden');
+        bjArea.innerHTML = `
+          <h3>Du varvade! Välj trivia-kategori!</h3>
+          <div class="minigame-choices">
+            ${event.categories.map(c => `
+              <button class="minigame-choice-btn" data-cat="${c.id}">
+                <span class="minigame-icon">${c.icon}</span>
+                <span class="minigame-name">${c.name}</span>
+              </button>
+            `).join('')}
+          </div>
+        `;
+        bjArea.querySelectorAll('.minigame-choice-btn').forEach(btn => {
+          btn.addEventListener('click', async () => {
+            bjArea.querySelectorAll('.minigame-choice-btn').forEach(b => b.disabled = true);
+            btn.style.borderColor = 'var(--accent)';
+            await DB.playerAction(roomCode, myId, { type: 'category-choice', categoryId: btn.dataset.cat });
+          });
+        });
+      } else {
+        turnText.textContent = `${event.chooserName} väljer trivia-kategori...`;
+      }
+      break;
+
     case 'minigame-select':
       diceBtn.classList.add('hidden');
       if (event.chooserId === myId) {
@@ -469,6 +496,16 @@ async function buyItem(itemId) {
 
     const targetId = players[idx][0];
     await DB.playerAction(roomCode, myId, { type: 'buy-item', itemId, extraData: { targetId } });
+    return;
+  }
+
+  if (item.type === 'category') {
+    const cats = TRIVIA_CATEGORIES.map((c, i) => `${i + 1}. ${c.icon} ${c.name}`).join('\n');
+    const choice = prompt(`Välj kategori:\n${cats}`);
+    if (!choice) return;
+    const idx = parseInt(choice) - 1;
+    if (isNaN(idx) || idx < 0 || idx >= TRIVIA_CATEGORIES.length) { alert('Ogiltigt val!'); return; }
+    await DB.playerAction(roomCode, myId, { type: 'buy-item', itemId, extraData: { categoryId: TRIVIA_CATEGORIES[idx].id } });
     return;
   }
 

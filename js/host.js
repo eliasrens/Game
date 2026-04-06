@@ -165,6 +165,22 @@ function handleEvent(event, players) {
       }
       break;
 
+    case 'category-select':
+      overlay.classList.remove('hidden');
+      overlayContent.innerHTML = `
+        <h2>🏆 ${event.chooserName} varvade brädet!</h2>
+        <p style="font-size:1.3rem;margin-bottom:1rem;">${event.chooserName} väljer trivia-kategori...</p>
+        <div style="display:flex;gap:1rem;justify-content:center;flex-wrap:wrap;">
+          ${event.categories.map(c => `
+            <div style="background:var(--bg);border-radius:12px;padding:1.5rem;min-width:120px;text-align:center;">
+              <div style="font-size:2.5rem;">${c.icon}</div>
+              <div style="font-weight:700;margin-top:0.5rem;">${c.name}</div>
+            </div>
+          `).join('')}
+        </div>
+      `;
+      break;
+
     case 'minigame-select':
       overlay.classList.remove('hidden');
       overlayContent.innerHTML = `

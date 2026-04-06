@@ -29,6 +29,7 @@ const PLAYER_COLORS = ['#e74c3c','#3498db','#2ecc71','#f1c40f','#9b59b6','#e67e2
 const SHOP_ITEMS = [
   { id: 'buyPoints', name: 'Köp 5 Poäng', description: 'Köp 5 poäng direkt', cost: 10, type: 'instant' },
   { id: 'stealPoints', name: 'Ta 5 Poäng', description: 'Ta bort 5 poäng från en valfri spelare', cost: 10, type: 'target' },
+  { id: 'changeCategory', name: 'Byt kategori', description: 'Byt trivia-kategori till valfri', cost: 5, type: 'category' },
   { id: 'wheelSlice', name: 'Hjulfält', description: 'Lägg till en egen regel på Lyckohjulet', cost: 5, type: 'wheel' },
   { id: 'sabotage', name: 'Sabotage', description: 'Frys en motståndares skärm i 5 sek', cost: 15, type: 'usable' },
   { id: 'shield', name: 'Sköld', description: 'Blockerar nästa negativa händelse', cost: 25, type: 'passive' }
@@ -84,6 +85,7 @@ class GameEngine {
       currentTurn: players[0].id,
       winCondition: winCondition || 'points',
       winValue: winValue || 100,
+      activeCategory: 'blandat',
       startedAt: firebase.database.ServerValue.TIMESTAMP
     });
   }
@@ -100,12 +102,18 @@ class GameEngine {
 
     // Lap bonus
     let coinBonus = 1; // passive income per turn
-    if (newPos < oldPos) coinBonus += 5; // completed a lap
+    const lapped = newPos < oldPos;
+    if (lapped) coinBonus += 5;
 
     await DB.updatePlayer(this.roomCode, player.id, {
       position: newPos,
       coins: (player.coins || 0) + coinBonus
     });
+
+    // If player lapped, let them choose a trivia category
+    if (lapped) {
+      this._pendingCategoryChoice = player.id;
+    }
 
     await DB.pushEvent(this.roomCode, {
       type: 'dice-rolled',
@@ -114,7 +122,7 @@ class GameEngine {
       roll,
       newPosition: newPos,
       tileType: tile.type,
-      lapped: newPos < oldPos
+      lapped
     });
 
     // Handle tile after animation delay
@@ -150,7 +158,9 @@ class GameEngine {
   // === TRIVIA ===
 
   async startTrivia() {
-    const q = getRandomQuestion();
+    const cat = this.room.activeCategory;
+    const q = cat ? getQuestionFromCategory(cat) : getRandomQuestion();
+    if (!q) { await this.advanceTurn(); return; }
     await DB.clearActions(this.roomCode);
 
     await DB.pushEvent(this.roomCode, {
@@ -611,6 +621,14 @@ class GameEngine {
       return { success: true };
     }
 
+    if (item.type === 'category' && item.id === 'changeCategory') {
+      const categoryId = extraData?.categoryId;
+      if (!categoryId) return { error: 'Ingen kategori vald' };
+      await DB.updatePlayer(this.roomCode, playerId, { coins: newCoins });
+      await DB.updateRoom(this.roomCode, { activeCategory: categoryId });
+      return { success: true };
+    }
+
     if (item.type === 'wheel' && extraData?.text) {
       await DB.addWheelSlice(this.roomCode, { text: extraData.text, addedBy: player.name });
       await DB.updatePlayer(this.roomCode, playerId, { coins: newCoins });
@@ -626,12 +644,65 @@ class GameEngine {
   // === TILE HANDLER ===
 
   async handleTile(tileType) {
+    // If player lapped, let them choose category first
+    if (this._pendingCategoryChoice) {
+      await this.startCategorySelect(this._pendingCategoryChoice);
+      this._pendingCategoryChoice = null;
+      // After category is chosen, continue with tile
+      this._pendingTile = tileType;
+      return;
+    }
+
     switch (tileType) {
       case 'green': await this.startTrivia(); break;
       case 'yellow': await this.startWheel(); break;
       case 'blue': await this.startMinigameSelect(); break;
       default: await this.advanceTurn();
     }
+  }
+
+  async startCategorySelect(playerId) {
+    const player = this.getPlayersArray().find(p => p.id === playerId);
+    await DB.clearActions(this.roomCode);
+
+    await DB.pushEvent(this.roomCode, {
+      type: 'category-select',
+      chooserId: playerId,
+      chooserName: player?.name || '?',
+      categories: TRIVIA_CATEGORIES
+    });
+
+    this.listenForActions((actions) => {
+      const choice = actions[playerId];
+      if (!choice || choice.type !== 'category-choice' || choice.processed) return;
+
+      db.ref(`rooms/${this.roomCode}/actions/${playerId}/processed`).set(true);
+      this.stopListeningActions();
+      clearTimeout(this._categoryTimeout);
+
+      DB.updateRoom(this.roomCode, { activeCategory: choice.categoryId }).then(() => {
+        const tile = this._pendingTile;
+        this._pendingTile = null;
+        switch (tile) {
+          case 'green': this.startTrivia(); break;
+          case 'yellow': this.startWheel(); break;
+          case 'blue': this.startMinigameSelect(); break;
+          default: this.advanceTurn();
+        }
+      });
+    });
+
+    this._categoryTimeout = setTimeout(() => {
+      this.stopListeningActions();
+      const tile = this._pendingTile;
+      this._pendingTile = null;
+      switch (tile) {
+        case 'green': this.startTrivia(); break;
+        case 'yellow': this.startWheel(); break;
+        case 'blue': this.startMinigameSelect(); break;
+        default: this.advanceTurn();
+      }
+    }, 10000);
   }
 
   // === MINIGAME SELECT ===
