@@ -526,16 +526,21 @@ class GameEngine {
   listenForActions(callback) {
     this.stopListeningActions();
     this.actionListenerActive = true;
-    DB.onActions(this.roomCode, (actions) => {
+    this._actionCallback = (snap) => {
+      const actions = snap.val() || {};
       if (this.actionListenerActive && Object.keys(actions).length > 0) {
         callback(actions);
       }
-    });
+    };
+    db.ref(`rooms/${this.roomCode}/actions`).on('value', this._actionCallback);
   }
 
   stopListeningActions() {
     this.actionListenerActive = false;
-    db.ref(`rooms/${this.roomCode}/actions`).off();
+    if (this._actionCallback) {
+      db.ref(`rooms/${this.roomCode}/actions`).off('value', this._actionCallback);
+      this._actionCallback = null;
+    }
   }
 
   // Timer-based win condition
