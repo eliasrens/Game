@@ -19,6 +19,7 @@ const rulesList = document.getElementById('rules-list');
 let engine = null;
 let roomCode = null;
 let lastEvent = null;
+let processingDice = false;
 
 // === INIT: Create room ===
 async function init() {
@@ -58,14 +59,19 @@ async function init() {
       if (action.processed) continue;
 
       if (action.type === 'roll-dice') {
-        // Only accept from current turn player
         if (playerId !== engine.room.currentTurn) continue;
+        if (processingDice) continue;
+        processingDice = true;
         await db.ref(`rooms/${roomCode}/actions/${playerId}/processed`).set(true);
 
         const result = await engine.rollDice();
         if (result) {
-          // Handle tile after animation delay
-          setTimeout(() => engine.handleTile(result.tile.type), 1500);
+          setTimeout(() => {
+            engine.handleTile(result.tile.type);
+            processingDice = false;
+          }, 1500);
+        } else {
+          processingDice = false;
         }
       }
 
