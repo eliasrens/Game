@@ -27,6 +27,8 @@ const BOARD = [
 const PLAYER_COLORS = ['#e74c3c','#3498db','#2ecc71','#f1c40f','#9b59b6','#e67e22','#1abc9c','#fd79a8'];
 
 const SHOP_ITEMS = [
+  { id: 'buyPoints', name: 'Köp 5 Poäng', description: 'Köp 5 poäng direkt', cost: 10, type: 'instant' },
+  { id: 'stealPoints', name: 'Ta 5 Poäng', description: 'Ta bort 5 poäng från en valfri spelare', cost: 10, type: 'target' },
   { id: 'wheelSlice', name: 'Hjulfält', description: 'Lägg till en egen regel på Lyckohjulet', cost: 5, type: 'wheel' },
   { id: 'sabotage', name: 'Sabotage', description: 'Frys en motståndares skärm i 5 sek', cost: 15, type: 'usable' },
   { id: 'shield', name: 'Sköld', description: 'Blockerar nästa negativa händelse', cost: 25, type: 'passive' }
@@ -81,7 +83,7 @@ class GameEngine {
       state: 'playing',
       currentTurn: players[0].id,
       winCondition: winCondition || 'points',
-      winValue: winValue || 30,
+      winValue: winValue || 100,
       startedAt: firebase.database.ServerValue.TIMESTAMP
     });
   }
@@ -451,44 +453,31 @@ class GameEngine {
 
     const players = this.getPlayersArray();
     const results = [];
-    const totalPot = Object.values(playerBets || {}).reduce((s, v) => s + v, 0);
-    const isFirstRound = this._bjRound === 1;
 
-    let winnersCount = 0;
     for (const p of players) {
       const total = this.bjHandTotal(playerHands[p.id]);
       const bust = playerStatus[p.id] === 'bust';
       const won = !bust && (dealerBust || total > dealerTotal);
       const push = !bust && !dealerBust && total === dealerTotal;
-      if (won) winnersCount++;
-      results.push({ id: p.id, name: p.name, color: p.color, hand: playerHands[p.id], total, bust, won, push, bet: playerBets[p.id] || 0 });
-    }
+      const bet = playerBets[p.id] || 0;
 
-    // Distribute winnings
-    for (const r of results) {
-      const p = players.find(pl => pl.id === r.id);
       let coinGain = 0;
-      let pointGain = 0;
-
-      if (r.won) {
-        // Winners split the pot + get their bet back
-        coinGain = Math.floor(totalPot / winnersCount);
-        if (isFirstRound) pointGain = 5;
-      } else if (r.push) {
-        // Push — get bet back
-        coinGain = r.bet;
+      if (won) {
+        // Beat the dealer — get bet back + win same amount (double)
+        coinGain = bet * 2;
+      } else if (push) {
+        // Tie — get bet back
+        coinGain = bet;
       }
       // Bust/lose — coins already deducted
 
-      if (coinGain > 0 || pointGain > 0) {
-        await DB.updatePlayer(this.roomCode, r.id, {
-          coins: (p.coins || 0) + coinGain,
-          points: (p.points || 0) + pointGain
+      if (coinGain > 0) {
+        await DB.updatePlayer(this.roomCode, p.id, {
+          coins: (p.coins || 0) + coinGain
         });
       }
 
-      r.coinGain = coinGain;
-      r.pointGain = pointGain;
+      results.push({ id: p.id, name: p.name, color: p.color, hand: playerHands[p.id], total, bust, won, push, bet, coinGain });
     }
 
     await DB.pushEvent(this.roomCode, {
@@ -497,8 +486,7 @@ class GameEngine {
       round: this._bjRound,
       dealerHand, dealerTotal, dealerBust,
       results,
-      totalPot,
-      triggerId: this._bjTriggerId // who decides next round
+      triggerId: this._bjTriggerId
     });
 
     // Wait for trigger player to decide: new round or end
@@ -602,6 +590,26 @@ class GameEngine {
     if ((player.coins || 0) < item.cost) return { error: 'Inte tillräckligt med mynt' };
 
     const newCoins = player.coins - item.cost;
+
+    if (item.type === 'instant' && item.id === 'buyPoints') {
+      await DB.updatePlayer(this.roomCode, playerId, {
+        coins: newCoins,
+        points: (player.points || 0) + 5
+      });
+      return { success: true };
+    }
+
+    if (item.type === 'target' && item.id === 'stealPoints') {
+      const targetId = extraData?.targetId;
+      if (!targetId) return { error: 'Ingen spelare vald' };
+      const target = this.getPlayersArray().find(p => p.id === targetId);
+      if (!target) return { error: 'Spelaren finns inte' };
+      await DB.updatePlayer(this.roomCode, playerId, { coins: newCoins });
+      await DB.updatePlayer(this.roomCode, targetId, {
+        points: Math.max(0, (target.points || 0) - 5)
+      });
+      return { success: true };
+    }
 
     if (item.type === 'wheel' && extraData?.text) {
       await DB.addWheelSlice(this.roomCode, { text: extraData.text, addedBy: player.name });

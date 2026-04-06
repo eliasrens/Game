@@ -235,7 +235,6 @@ function handleEvent(event, players) {
         const triggerPlayer = players.find(p => p.id === event.triggerId);
         overlayContent.innerHTML = `
           <h2>&#9824; Blackjack — Runda ${event.round} &#9829;</h2>
-          <p style="color:var(--yellow);font-size:1.1rem;">Pott: ${event.totalPot} mynt</p>
           <div><h3>Dealer: ${event.dealerTotal} ${event.dealerBust ? '(BUST!)' : ''}</h3>
           <div class="bj-cards">${dc}</div></div>
           <div class="bj-results">
@@ -244,7 +243,7 @@ function handleEvent(event, players) {
                 <div class="player-dot" style="background:${r.color}"></div>
                 <span>${r.name}</span>
                 <span class="bj-cards-small">${r.hand.map(c => c.rank+c.suit).join(' ')} (${r.bet} insats)</span>
-                <span class="bj-total">${r.total} ${r.bust ? '\uD83D\uDCA5' : r.won ? '\u2713 +' + r.coinGain : ''}</span>
+                <span class="bj-total">${r.total} ${r.bust ? '\uD83D\uDCA5' : r.won ? '\u2713 +' + r.coinGain + ' mynt' : r.push ? 'Oavgjort' : '\u2717'}</span>
               </div>
             `).join('')}
           </div>

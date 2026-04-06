@@ -156,9 +156,10 @@ function handleRoomUpdate(data) {
     handleEvent(data.currentEvent, data);
   }
 
-  // No active event — reset UI (but not if BJ results are showing)
-  if (!data.currentEvent && bjArea.dataset.showingResults !== 'true') {
+  // No active event — reset UI
+  if (!data.currentEvent) {
     bjArea.classList.add('hidden');
+    bjArea.dataset.showingResults = '';
     triviaArea.classList.add('hidden');
     diceBtn.classList.remove('hidden');
   }
@@ -324,24 +325,21 @@ function handleEvent(event, roomData) {
         }
 
       } else if (event.phase === 'results') {
-        // Mark that we're showing results so handleRoomUpdate doesn't hide the UI
-        bjArea.dataset.showingResults = 'true';
-
         const myResult = event.results?.find(r => r.id === myId);
         const iAmTrigger = event.triggerId === myId;
 
         let resultHtml = `<h3>&#9824; Resultat — Runda ${event.round} &#9829;</h3>`;
-        resultHtml += `<p>Pott: ${event.totalPot} mynt</p>`;
 
         if (myResult) {
+          const outcomeText = myResult.bust ? 'BUST' : myResult.won ? 'VINST!' : myResult.push ? 'Oavgjort' : 'Förlust';
+          const gainText = myResult.coinGain > 0 ? ` +${myResult.coinGain} mynt` : '';
           resultHtml += `
             <div class="bj-hand">
               ${myResult.hand.map(c => `<span class="bj-card-mobile">${c.rank}${c.suit}</span>`).join('')}
             </div>
             <div class="bj-total-display">
-              ${myResult.total} — ${myResult.bust ? 'BUST' : myResult.won ? 'VINST!' : myResult.push ? 'Oavgjort' : 'Förlust'}
-              ${myResult.coinGain > 0 ? ' +' + myResult.coinGain + ' mynt' : ''}
-              ${myResult.pointGain > 0 ? ' +' + myResult.pointGain + ' poäng' : ''}
+              Du: ${myResult.total} vs Dealer: ${event.dealerTotal} ${event.dealerBust ? '(BUST)' : ''}
+              <br><strong>${outcomeText}</strong>${gainText}
             </div>
           `;
         }
@@ -449,6 +447,28 @@ async function buyItem(itemId) {
   const me = room?.players?.[myId];
   if (!me || (me.coins || 0) < item.cost) {
     alert('Inte tillräckligt med mynt!');
+    return;
+  }
+
+  if (item.type === 'instant') {
+    // Buy points — handled by host via action
+    await DB.playerAction(roomCode, myId, { type: 'buy-item', itemId });
+    return;
+  }
+
+  if (item.type === 'target') {
+    // Need to pick a target player
+    const players = room.players ? Object.entries(room.players).filter(([id]) => id !== myId) : [];
+    if (players.length === 0) { alert('Inga andra spelare!'); return; }
+
+    const names = players.map(([, p], i) => `${i + 1}. ${p.name}`).join('\n');
+    const choice = prompt(`Välj spelare:\n${names}`);
+    if (!choice) return;
+    const idx = parseInt(choice) - 1;
+    if (isNaN(idx) || idx < 0 || idx >= players.length) { alert('Ogiltigt val!'); return; }
+
+    const targetId = players[idx][0];
+    await DB.playerAction(roomCode, myId, { type: 'buy-item', itemId, extraData: { targetId } });
     return;
   }
 
