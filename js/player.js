@@ -332,10 +332,21 @@ function renderInventory(items) {
 }
 
 // === HOUSE RULES ===
+const RULE_COST = 3;
+
 ruleForm.addEventListener('submit', async (e) => {
   e.preventDefault();
   const text = ruleInput.value.trim();
   if (!text) return;
+
+  const room = await DB.getRoom(roomCode);
+  const me = room?.players?.[myId];
+  if (!me || (me.coins || 0) < RULE_COST) {
+    alert(`Kostar ${RULE_COST} mynt att lägga till en regel!`);
+    return;
+  }
+
+  await DB.updatePlayer(roomCode, myId, { coins: me.coins - RULE_COST });
   await DB.addHouseRule(roomCode, { text, addedBy: myName });
   ruleInput.value = '';
 });
