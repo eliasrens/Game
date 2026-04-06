@@ -1,6 +1,14 @@
 // Game logic — runs on the HOST's browser
 // This is the "server" — Firebase just syncs the state
 
+// Available minigames — add new ones here
+const AVAILABLE_MINIGAMES = [
+  { id: 'blackjack', name: 'Blackjack', icon: '🃏', description: 'Slå dealern! Närmast 21 vinner.' }
+  // Future games:
+  // { id: 'higher-lower', name: 'Högre eller Lägre', icon: '📊', description: 'Gissa om nästa tal är högre eller lägre.' },
+  // { id: 'reaction', name: 'Reaktionstest', icon: '⚡', description: 'Snabbaste reflexerna vinner!' },
+];
+
 const BOARD = [
   { id: 0,  type: 'green' },  { id: 1,  type: 'green' },
   { id: 2,  type: 'yellow' }, { id: 3,  type: 'green' },
@@ -294,14 +302,82 @@ class GameEngine {
   // === BLACKJACK ===
 
   async startBlackjack() {
+    this._bjRound = 1;
+    this._bjTriggerId = this.room.currentTurn; // player who landed on the tile
+    await this.startBlackjackBetting();
+  }
+
+  // Phase 1: Betting
+  async startBlackjackBetting() {
+    await DB.clearActions(this.roomCode);
+
+    await DB.pushEvent(this.roomCode, {
+      type: 'blackjack',
+      phase: 'betting',
+      round: this._bjRound,
+      minBet: 1,
+      maxBet: 20
+    });
+
+    this.listenForActions((actions) => {
+      this.handleBlackjackBets(actions);
+    });
+
+    // Auto-start after 15 seconds if not everyone has bet
+    this._bjBetTimeout = setTimeout(() => {
+      this.startBlackjackRound();
+    }, 15000);
+  }
+
+  async handleBlackjackBets(actions) {
+    const players = this.getPlayersArray();
+    const bets = {};
+    let betCount = 0;
+
+    for (const [playerId, action] of Object.entries(actions)) {
+      if (action.type === 'bj-bet' && !action.processed) {
+        bets[playerId] = action.amount || 0;
+        betCount++;
+      }
+    }
+
+    // All players have bet
+    if (betCount >= players.length) {
+      clearTimeout(this._bjBetTimeout);
+      await this.startBlackjackRound(bets);
+    }
+  }
+
+  // Phase 2: Playing
+  async startBlackjackRound(bets) {
+    this.stopListeningActions();
+
     const players = this.getPlayersArray();
     const deck = this.createDeck();
-
     const dealerHand = [deck.pop(), deck.pop()];
     const playerHands = {};
     const playerStatus = {};
 
+    // Collect bets from actions if not passed
+    if (!bets) {
+      const room = await DB.getRoom(this.roomCode);
+      const actions = room?.actions || {};
+      bets = {};
+      for (const [playerId, action] of Object.entries(actions)) {
+        if (action.type === 'bj-bet') {
+          bets[playerId] = action.amount || 0;
+        }
+      }
+    }
+
+    // Deduct bets from players and store
+    const playerBets = {};
     for (const p of players) {
+      const bet = Math.min(bets[p.id] || 0, p.coins || 0);
+      playerBets[p.id] = bet;
+      if (bet > 0) {
+        await DB.updatePlayer(this.roomCode, p.id, { coins: (p.coins || 0) - bet });
+      }
       playerHands[p.id] = [deck.pop(), deck.pop()];
       playerStatus[p.id] = 'playing';
     }
@@ -311,10 +387,12 @@ class GameEngine {
     await DB.pushEvent(this.roomCode, {
       type: 'blackjack',
       phase: 'playing',
+      round: this._bjRound,
       deck,
       dealerHand,
       playerHands,
-      playerStatus
+      playerStatus,
+      playerBets
     });
 
     this.listenForActions((actions) => {
@@ -326,7 +404,7 @@ class GameEngine {
     const event = this.room.currentEvent;
     if (!event || event.type !== 'blackjack' || event.phase !== 'playing') return;
 
-    let { deck, dealerHand, playerHands, playerStatus } = event;
+    let { deck, dealerHand, playerHands, playerStatus, playerBets } = event;
     let changed = false;
 
     for (const [playerId, action] of Object.entries(actions)) {
@@ -350,21 +428,21 @@ class GameEngine {
       await DB.pushEvent(this.roomCode, {
         type: 'blackjack',
         phase: 'playing',
-        deck, dealerHand, playerHands, playerStatus
+        round: this._bjRound,
+        deck, dealerHand, playerHands, playerStatus, playerBets
       });
 
-      // Check if all done
       const allDone = Object.values(playerStatus).every(s => s === 'stand' || s === 'bust');
       if (allDone) {
         await DB.clearActions(this.roomCode);
         this.stopListeningActions();
-        await this.resolveBlackjack(deck, dealerHand, playerHands, playerStatus);
+        await this.resolveBlackjack(deck, dealerHand, playerHands, playerStatus, playerBets);
       }
     }
   }
 
-  async resolveBlackjack(deck, dealerHand, playerHands, playerStatus) {
-    // Dealer draws to 17
+  // Phase 3: Results
+  async resolveBlackjack(deck, dealerHand, playerHands, playerStatus, playerBets) {
     while (this.bjHandTotal(dealerHand) < 17) {
       dealerHand.push(deck.pop());
     }
@@ -373,47 +451,86 @@ class GameEngine {
 
     const players = this.getPlayersArray();
     const results = [];
-    let bestScore = -1;
-    let winnerId = null;
+    const totalPot = Object.values(playerBets || {}).reduce((s, v) => s + v, 0);
+    const isFirstRound = this._bjRound === 1;
 
+    let winnersCount = 0;
     for (const p of players) {
       const total = this.bjHandTotal(playerHands[p.id]);
       const bust = playerStatus[p.id] === 'bust';
       const won = !bust && (dealerBust || total > dealerTotal);
-
-      if (won) {
-        await DB.updatePlayer(this.roomCode, p.id, {
-          points: (p.points || 0) + 5,
-          coins: (p.coins || 0) + 3
-        });
-      } else if (!bust && total === dealerTotal) {
-        await DB.updatePlayer(this.roomCode, p.id, { coins: (p.coins || 0) + 2 });
-      }
-
-      if (!bust && total > bestScore) {
-        bestScore = total;
-        winnerId = p.id;
-      }
-
-      results.push({ id: p.id, name: p.name, color: p.color, hand: playerHands[p.id], total, bust, won });
+      const push = !bust && !dealerBust && total === dealerTotal;
+      if (won) winnersCount++;
+      results.push({ id: p.id, name: p.name, color: p.color, hand: playerHands[p.id], total, bust, won, push, bet: playerBets[p.id] || 0 });
     }
 
-    if (winnerId) {
-      const w = players.find(p => p.id === winnerId);
-      await DB.updatePlayer(this.roomCode, winnerId, { points: (w.points || 0) + 3 });
+    // Distribute winnings
+    for (const r of results) {
+      const p = players.find(pl => pl.id === r.id);
+      let coinGain = 0;
+      let pointGain = 0;
+
+      if (r.won) {
+        // Winners split the pot + get their bet back
+        coinGain = Math.floor(totalPot / winnersCount);
+        if (isFirstRound) pointGain = 5;
+      } else if (r.push) {
+        // Push — get bet back
+        coinGain = r.bet;
+      }
+      // Bust/lose — coins already deducted
+
+      if (coinGain > 0 || pointGain > 0) {
+        await DB.updatePlayer(this.roomCode, r.id, {
+          coins: (p.coins || 0) + coinGain,
+          points: (p.points || 0) + pointGain
+        });
+      }
+
+      r.coinGain = coinGain;
+      r.pointGain = pointGain;
     }
 
     await DB.pushEvent(this.roomCode, {
       type: 'blackjack',
       phase: 'results',
+      round: this._bjRound,
       dealerHand, dealerTotal, dealerBust,
-      results
+      results,
+      totalPot,
+      triggerId: this._bjTriggerId // who decides next round
     });
 
-    setTimeout(async () => {
-      await DB.clearEvent(this.roomCode);
-      this.advanceTurn();
-    }, 5000);
+    // Wait for trigger player to decide: new round or end
+    await DB.clearActions(this.roomCode);
+    this.listenForActions((actions) => {
+      const triggerAction = actions[this._bjTriggerId];
+      if (!triggerAction || triggerAction.processed) return;
+
+      if (triggerAction.type === 'bj-continue') {
+        db.ref(`rooms/${this.roomCode}/actions/${this._bjTriggerId}/processed`).set(true);
+        this.stopListeningActions();
+        this._bjRound++;
+        this.startBlackjackBetting();
+      } else if (triggerAction.type === 'bj-end') {
+        db.ref(`rooms/${this.roomCode}/actions/${this._bjTriggerId}/processed`).set(true);
+        this.stopListeningActions();
+        this.endBlackjack();
+      }
+    });
+
+    // Auto-end after 15 seconds if trigger player doesn't decide
+    this._bjDecideTimeout = setTimeout(() => {
+      this.stopListeningActions();
+      this.endBlackjack();
+    }, 15000);
+  }
+
+  async endBlackjack() {
+    clearTimeout(this._bjDecideTimeout);
+    await DB.clearActions(this.roomCode);
+    await DB.clearEvent(this.roomCode);
+    this.advanceTurn();
   }
 
   createDeck() {
@@ -504,8 +621,49 @@ class GameEngine {
     switch (tileType) {
       case 'green': await this.startTrivia(); break;
       case 'yellow': await this.startWheel(); break;
-      case 'blue': await this.startBlackjack(); break;
+      case 'blue': await this.startMinigameSelect(); break;
       default: await this.advanceTurn();
+    }
+  }
+
+  // === MINIGAME SELECT ===
+
+  async startMinigameSelect() {
+    const chooserId = this.room.currentTurn;
+    const chooser = this.getPlayersArray().find(p => p.id === chooserId);
+    await DB.clearActions(this.roomCode);
+
+    await DB.pushEvent(this.roomCode, {
+      type: 'minigame-select',
+      chooserId,
+      chooserName: chooser?.name || '?',
+      games: AVAILABLE_MINIGAMES
+    });
+
+    this.listenForActions((actions) => {
+      const choice = actions[chooserId];
+      if (!choice || choice.type !== 'minigame-choice' || choice.processed) return;
+
+      db.ref(`rooms/${this.roomCode}/actions/${chooserId}/processed`).set(true);
+      this.stopListeningActions();
+      clearTimeout(this._selectTimeout);
+      this.launchMinigame(choice.gameId);
+    });
+
+    // Auto-pick first game after 15 seconds
+    this._selectTimeout = setTimeout(() => {
+      this.stopListeningActions();
+      this.launchMinigame(AVAILABLE_MINIGAMES[0].id);
+    }, 15000);
+  }
+
+  async launchMinigame(gameId) {
+    await DB.clearActions(this.roomCode);
+    switch (gameId) {
+      case 'blackjack': await this.startBlackjack(); break;
+      // Add more minigames here:
+      // case 'higher-lower': await this.startHigherLower(); break;
+      default: await this.startBlackjack();
     }
   }
 

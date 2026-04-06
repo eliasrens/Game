@@ -99,6 +99,11 @@ function renderFromState(data) {
     handleEvent(data.currentEvent, players);
   }
 
+  // No active event — hide overlay
+  if (!data.currentEvent && !overlay.classList.contains('hidden')) {
+    overlay.classList.add('hidden');
+  }
+
   // House rules
   if (data.houseRules) {
     const rules = Object.values(data.houseRules);
@@ -148,6 +153,23 @@ function handleEvent(event, players) {
       }
       break;
 
+    case 'minigame-select':
+      overlay.classList.remove('hidden');
+      overlayContent.innerHTML = `
+        <h2>Minispel!</h2>
+        <p style="font-size:1.3rem;margin-bottom:1rem;">${event.chooserName} väljer spel...</p>
+        <div style="display:flex;gap:1rem;justify-content:center;flex-wrap:wrap;">
+          ${event.games.map(g => `
+            <div style="background:var(--bg);border-radius:12px;padding:1.5rem;min-width:150px;text-align:center;">
+              <div style="font-size:3rem;">${g.icon}</div>
+              <div style="font-weight:700;margin-top:0.5rem;">${g.name}</div>
+              <div style="color:var(--text-dim);font-size:0.85rem;">${g.description}</div>
+            </div>
+          `).join('')}
+        </div>
+      `;
+      break;
+
     case 'wheel':
       if (event.phase === 'spinning') {
         overlay.classList.remove('hidden');
@@ -164,20 +186,35 @@ function handleEvent(event, players) {
 
     case 'blackjack':
       overlay.classList.remove('hidden');
-      if (event.phase === 'playing') {
+      if (event.phase === 'betting') {
+        overlayContent.innerHTML = `
+          <h2>&#9824; Blackjack — Runda ${event.round} &#9829;</h2>
+          <p style="font-size:1.3rem;">${event.round === 1 ? 'Poäng + mynt att vinna!' : 'Spela om mynt!'}</p>
+          <p style="margin-top:1rem;color:var(--text-dim);font-size:1.1rem;">Spelarna satsar mynt på sina telefoner...</p>
+          <div class="timer-bar" id="bet-timer"></div>
+        `;
+        const betTimer = document.getElementById('bet-timer');
+        betTimer.style.width = '100%';
+        requestAnimationFrame(() => { betTimer.style.width = '0%'; betTimer.style.transitionDuration = '15s'; });
+
+      } else if (event.phase === 'playing') {
         const dealerCards = event.dealerHand.map((c, i) =>
           i === 1 ? '<span class="bj-card hidden-card">?</span>' : `<span class="bj-card">${c.rank}${c.suit}</span>`
         ).join('');
+        const totalPot = Object.values(event.playerBets || {}).reduce((s, v) => s + v, 0);
         overlayContent.innerHTML = `
-          <h2>&#9824; Blackjack &#9829;</h2>
+          <h2>&#9824; Blackjack — Runda ${event.round} &#9829;</h2>
+          <p style="color:var(--yellow);font-size:1.1rem;">Pott: ${totalPot} mynt</p>
           <div><h3>Dealer</h3><div class="bj-cards">${dealerCards}</div></div>
           <div class="bj-players-grid" style="margin-top:1.5rem;">
             ${players.map(p => {
               const hand = event.playerHands[p.id];
               const status = event.playerStatus[p.id];
+              const bet = event.playerBets?.[p.id] || 0;
               const total = hand ? engine.bjHandTotal(hand) : 0;
               return `<div class="bj-player-box" style="border-color:${p.color}">
                 <span class="bj-player-name">${p.name}</span>
+                <span>Insats: ${bet}</span>
                 <span>${hand ? hand.length : 0} kort</span>
                 <span class="bj-player-status ${status}">${
                   status === 'bust' ? 'BUST (' + total + ')' : status === 'stand' ? 'STAND' : 'Spelar...'
@@ -189,8 +226,10 @@ function handleEvent(event, players) {
         `;
       } else if (event.phase === 'results') {
         const dc = event.dealerHand.map(c => `<span class="bj-card">${c.rank}${c.suit}</span>`).join('');
+        const triggerPlayer = players.find(p => p.id === event.triggerId);
         overlayContent.innerHTML = `
-          <h2>&#9824; Blackjack — Resultat &#9829;</h2>
+          <h2>&#9824; Blackjack — Runda ${event.round} &#9829;</h2>
+          <p style="color:var(--yellow);font-size:1.1rem;">Pott: ${event.totalPot} mynt</p>
           <div><h3>Dealer: ${event.dealerTotal} ${event.dealerBust ? '(BUST!)' : ''}</h3>
           <div class="bj-cards">${dc}</div></div>
           <div class="bj-results">
@@ -198,13 +237,13 @@ function handleEvent(event, players) {
               <div class="bj-result-row ${r.won ? 'winner' : r.bust ? 'loser' : ''}">
                 <div class="player-dot" style="background:${r.color}"></div>
                 <span>${r.name}</span>
-                <span class="bj-cards-small">${r.hand.map(c => c.rank+c.suit).join(' ')}</span>
-                <span class="bj-total">${r.total} ${r.bust ? '\uD83D\uDCA5' : r.won ? '\u2713' : ''}</span>
+                <span class="bj-cards-small">${r.hand.map(c => c.rank+c.suit).join(' ')} (${r.bet} insats)</span>
+                <span class="bj-total">${r.total} ${r.bust ? '\uD83D\uDCA5' : r.won ? '\u2713 +' + r.coinGain : ''}</span>
               </div>
             `).join('')}
           </div>
+          <p style="margin-top:1rem;color:var(--text-dim);">${triggerPlayer ? triggerPlayer.name + ' bestämmer...' : 'Väntar...'}</p>
         `;
-        setTimeout(() => overlay.classList.add('hidden'), 5000);
       }
       break;
 

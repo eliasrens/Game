@@ -77,6 +77,26 @@ body { max-width: 480px; margin: 0 auto; }
 
 /* BLACKJACK */
 .bj-area { margin-top: 1rem; text-align: center; }
+/* MINIGAME SELECT */
+.minigame-choices { display: flex; flex-direction: column; gap: 0.75rem; margin-top: 1rem; }
+.minigame-choice-btn {
+  display: flex; align-items: center; gap: 1rem; padding: 1rem;
+  border: 2px solid rgba(255,255,255,0.15); border-radius: 12px;
+  background: var(--surface); color: var(--text); cursor: pointer;
+  text-align: left; transition: all 0.2s;
+}
+.minigame-choice-btn:active { transform: scale(0.97); }
+.minigame-icon { font-size: 2rem; }
+.minigame-name { font-weight: 700; font-size: 1.1rem; }
+.minigame-desc { font-size: 0.8rem; color: var(--text-dim); }
+
+.bj-bet-section { margin-top: 1rem; }
+.bj-bet-controls {
+  display: flex; align-items: center; justify-content: center;
+  gap: 1.5rem; margin: 1rem 0;
+}
+.bj-bet-amount { font-size: 2.5rem; font-weight: 900; color: var(--yellow); min-width: 3rem; }
+.bj-your-bet { color: var(--yellow); font-weight: 600; margin-bottom: 0.5rem; }
 .bj-hand { display: flex; justify-content: center; gap: 0.5rem; margin: 1rem 0; flex-wrap: wrap; }
 .bj-card-mobile {
   display: inline-flex; align-items: center; justify-content: center;
