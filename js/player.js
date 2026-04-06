@@ -4,7 +4,8 @@ let roomCode = null;
 let myId = null;
 let myName = '';
 let lastEvent = null;
-let diceRolled = false;
+let rolledForTurn = null; // tracks which currentTurn we already rolled for
+let currentTurnId = null;
 
 // DOM
 const joinForm = document.getElementById('join-form');
@@ -138,20 +139,19 @@ function handleRoomUpdate(data) {
     }
 
     // Update turn
+    currentTurnId = data.currentTurn;
     const isMyTurn = data.currentTurn === myId;
     const hasEvent = !!data.currentEvent;
-    // Only enable dice if it's my turn, no event is active, and I haven't already rolled
-    diceBtn.disabled = !isMyTurn || hasEvent || diceRolled;
+    const alreadyRolled = rolledForTurn === data.currentTurn;
+    const canRoll = isMyTurn && !hasEvent && !alreadyRolled;
 
-    if (isMyTurn && !hasEvent && !diceRolled) {
+    diceBtn.disabled = !canRoll;
+
+    if (canRoll) {
       turnText.textContent = 'Din tur! Slå tärningen!';
       turnText.style.color = 'var(--accent)';
       if (navigator.vibrate) navigator.vibrate(200);
-    } else if (isMyTurn) {
-      // My turn but event active or already rolled
-      turnText.textContent = '';
-    } else {
-      diceRolled = false; // Reset for next turn
+    } else if (!isMyTurn) {
       const currentPlayer = data.players?.[data.currentTurn];
       turnText.textContent = currentPlayer ? `${currentPlayer.name}s tur...` : 'Väntar...';
       turnText.style.color = 'var(--text-dim)';
@@ -445,8 +445,8 @@ function handleEvent(event, roomData) {
 
 // === DICE ===
 diceBtn.addEventListener('click', async () => {
-  if (diceBtn.disabled || diceRolled) return;
-  diceRolled = true;
+  if (diceBtn.disabled) return;
+  rolledForTurn = currentTurnId;
   diceBtn.disabled = true;
   await DB.playerAction(roomCode, myId, { type: 'roll-dice' });
 });

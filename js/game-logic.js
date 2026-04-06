@@ -260,7 +260,7 @@ class GameEngine {
         resultText: result.text
       });
 
-      setTimeout(() => this.advanceTurn(), 2500);
+      setTimeout(() => this.advanceTurn(), 6000);
     }, 4000);
   }
 

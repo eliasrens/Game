@@ -214,7 +214,7 @@ function handleEvent(event, players) {
         drawWheel(event.slices, event.winningIndex);
       } else if (event.phase === 'result') {
         overlayContent.innerHTML = `<h2>Resultat</h2><p style="font-size:1.5rem;margin:1rem 0;">${event.resultText}</p>`;
-        setTimeout(() => overlay.classList.add('hidden'), 2500);
+        setTimeout(() => overlay.classList.add('hidden'), 6000);
       }
       break;
 
