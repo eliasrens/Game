@@ -118,6 +118,18 @@ body { max-width: 480px; margin: 0 auto; }
 }
 .btn-hit:active, .btn-stand:active { transform: scale(0.95); }
 .bj-wait { color: var(--text-dim); font-size: 1.1rem; margin-top: 0.5rem; }
+.bj-quick-bets {
+  display: flex; flex-wrap: wrap; justify-content: center;
+  gap: 0.5rem; margin: 1rem 0;
+}
+.bj-quick-bet {
+  padding: 0.75rem 1.2rem; border: 2px solid rgba(255,255,255,0.2);
+  border-radius: 10px; background: var(--surface); color: var(--text);
+  font-size: 1.1rem; font-weight: 700; cursor: pointer; transition: all 0.2s;
+  min-width: 3.5rem;
+}
+.bj-quick-bet:active { transform: scale(0.93); }
+.bj-quick-bet:disabled { opacity: 0.4; cursor: not-allowed; }
 
 /* SABOTAGE FREEZE */
 .freeze-overlay {

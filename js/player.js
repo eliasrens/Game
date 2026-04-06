@@ -125,8 +125,8 @@ function handleRoomUpdate(data) {
     handleEvent(data.currentEvent, data);
   }
 
-  // No active event — reset UI
-  if (!data.currentEvent) {
+  // No active event — reset UI (but not if BJ results are showing)
+  if (!data.currentEvent && bjArea.dataset.showingResults !== 'true') {
     bjArea.classList.add('hidden');
     triviaArea.classList.add('hidden');
     diceBtn.classList.remove('hidden');
@@ -219,44 +219,39 @@ function handleEvent(event, roomData) {
       bjArea.classList.remove('hidden');
 
       if (event.phase === 'betting') {
-        // Betting phase — choose how many coins to bet
-        const room = roomData;
-        const me = room?.players?.[myId];
+        const me = roomData?.players?.[myId];
         const myCoinsNow = me?.coins || 0;
+        const maxBet = Math.min(myCoinsNow, event.maxBet || 20);
 
         bjArea.innerHTML = `
           <h3>&#9824; Blackjack — Runda ${event.round} &#9829;</h3>
           <p>${event.round === 1 ? 'Poäng + mynt att vinna!' : 'Spela om mynt!'}</p>
           <div class="bj-bet-section">
-            <p>Satsa mynt (du har ${myCoinsNow}):</p>
-            <div class="bj-bet-controls">
-              <button class="btn-small" id="bj-bet-down">-</button>
-              <span id="bj-bet-amount" class="bj-bet-amount">0</span>
-              <button class="btn-small" id="bj-bet-up">+</button>
+            <p>Satsa mynt (du har <strong>${myCoinsNow}</strong>):</p>
+            <div class="bj-quick-bets">
+              <button class="bj-quick-bet" data-bet="0">0</button>
+              <button class="bj-quick-bet" data-bet="1">1</button>
+              <button class="bj-quick-bet" data-bet="3">3</button>
+              <button class="bj-quick-bet" data-bet="5">5</button>
+              <button class="bj-quick-bet" data-bet="10">10</button>
+              <button class="bj-quick-bet" data-bet="${maxBet}">Allt (${maxBet})</button>
             </div>
-            <button class="btn btn-primary" id="bj-bet-confirm" style="margin-top:1rem;width:100%;">Satsa</button>
           </div>
         `;
 
-        let betAmount = 0;
-        const maxBet = Math.min(myCoinsNow, event.maxBet || 20);
-        const amountEl = document.getElementById('bj-bet-amount');
-
-        document.getElementById('bj-bet-down').addEventListener('click', () => {
-          betAmount = Math.max(0, betAmount - 1);
-          amountEl.textContent = betAmount;
-        });
-        document.getElementById('bj-bet-up').addEventListener('click', () => {
-          betAmount = Math.min(maxBet, betAmount + 1);
-          amountEl.textContent = betAmount;
-        });
-        document.getElementById('bj-bet-confirm').addEventListener('click', async () => {
-          document.getElementById('bj-bet-confirm').disabled = true;
-          await DB.playerAction(roomCode, myId, { type: 'bj-bet', amount: betAmount });
-          bjArea.innerHTML = `
-            <h3>&#9824; Blackjack — Runda ${event.round} &#9829;</h3>
-            <p>Du satsade <strong>${betAmount}</strong> mynt. Väntar på andra...</p>
-          `;
+        bjArea.querySelectorAll('.bj-quick-bet').forEach(btn => {
+          const amount = parseInt(btn.dataset.bet);
+          if (amount > maxBet) { btn.disabled = true; btn.style.opacity = '0.4'; }
+          btn.addEventListener('click', async () => {
+            bjArea.querySelectorAll('.bj-quick-bet').forEach(b => b.disabled = true);
+            btn.style.borderColor = 'var(--accent)';
+            btn.style.background = 'rgba(52,152,219,0.3)';
+            await DB.playerAction(roomCode, myId, { type: 'bj-bet', amount: Math.min(amount, maxBet) });
+            bjArea.innerHTML = `
+              <h3>&#9824; Blackjack — Runda ${event.round} &#9829;</h3>
+              <p>Du satsade <strong>${Math.min(amount, maxBet)}</strong> mynt. Väntar...</p>
+            `;
+          });
         });
 
       } else if (event.phase === 'playing') {
@@ -298,6 +293,9 @@ function handleEvent(event, roomData) {
         }
 
       } else if (event.phase === 'results') {
+        // Mark that we're showing results so handleRoomUpdate doesn't hide the UI
+        bjArea.dataset.showingResults = 'true';
+
         const myResult = event.results?.find(r => r.id === myId);
         const iAmTrigger = event.triggerId === myId;
 
@@ -319,8 +317,8 @@ function handleEvent(event, roomData) {
 
         if (iAmTrigger) {
           resultHtml += `
-            <div class="bj-continue-actions" style="margin-top:1.5rem;">
-              <p style="margin-bottom:0.75rem;">Vill du spela en runda till?</p>
+            <div style="margin-top:1.5rem;">
+              <p style="margin-bottom:0.75rem;font-weight:700;font-size:1.1rem;">Spela igen?</p>
               <div class="bj-actions">
                 <button class="btn-hit" id="bj-new-round">Ny runda</button>
                 <button class="btn-stand" id="bj-end-game">Avsluta</button>
@@ -335,11 +333,16 @@ function handleEvent(event, roomData) {
 
         if (iAmTrigger) {
           document.getElementById('bj-new-round').addEventListener('click', async () => {
+            bjArea.querySelectorAll('button').forEach(b => b.disabled = true);
+            bjArea.dataset.showingResults = '';
             await DB.playerAction(roomCode, myId, { type: 'bj-continue' });
-            bjArea.innerHTML = '<p>Startar ny runda...</p>';
+            bjArea.innerHTML = '<h3>Startar ny runda...</h3>';
           });
           document.getElementById('bj-end-game').addEventListener('click', async () => {
+            bjArea.querySelectorAll('button').forEach(b => b.disabled = true);
+            bjArea.dataset.showingResults = '';
             await DB.playerAction(roomCode, myId, { type: 'bj-end' });
+            bjArea.innerHTML = '<h3>Avslutar...</h3>';
           });
         }
       }
