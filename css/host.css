@@ -38,12 +38,13 @@
 
 /* === GAME SCREEN === */
 #game-screen {
-  display: grid; grid-template-columns: 1fr auto;
+  display: grid; grid-template-columns: auto 1fr auto;
   grid-template-rows: auto 1fr; height: 100vh; padding: 1rem; gap: 1rem;
+  justify-items: center;
 }
 .scoreboard {
   grid-column: 1 / -1; display: flex; gap: 1rem;
-  justify-content: center; flex-wrap: wrap;
+  justify-content: center; flex-wrap: wrap; width: 100%;
 }
 .score-card {
   background: var(--surface); border-radius: 10px; padding: 0.6rem 1.2rem;
@@ -55,7 +56,7 @@
 .score-coins { color: var(--yellow); }
 
 /* === BOARD === */
-.board-container { display: flex; justify-content: center; align-items: center; }
+.board-container { display: flex; justify-content: center; align-items: center; grid-column: 2; }
 .board {
   display: grid; grid-template-columns: repeat(8, 85px);
   grid-template-rows: repeat(6, 85px); gap: 4px;
@@ -82,7 +83,7 @@
 
 /* === HOUSE RULES === */
 .house-rules {
-  grid-row: 2; background: var(--surface); border-radius: 12px;
+  grid-column: 3; grid-row: 2; background: var(--surface); border-radius: 12px;
   padding: 1rem; width: 220px; max-height: 100%; overflow-y: auto;
 }
 .house-rules h3 { margin-bottom: 0.75rem; color: var(--text-dim); font-size: 0.9rem; text-transform: uppercase; letter-spacing: 1px; }
