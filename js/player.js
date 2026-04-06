@@ -29,6 +29,14 @@ const rulesDisplay = document.getElementById('rules-display');
 // Auto-uppercase room code
 roomInput.addEventListener('input', () => { roomInput.value = roomInput.value.toUpperCase(); });
 
+// Auto-fill room code from URL parameter (e.g. ?room=ABCD)
+const urlParams = new URLSearchParams(window.location.search);
+const urlRoom = urlParams.get('room');
+if (urlRoom) {
+  roomInput.value = urlRoom.toUpperCase();
+  nameInput.focus();
+}
+
 // === JOIN ===
 joinForm.addEventListener('submit', async (e) => {
   e.preventDefault();
@@ -45,24 +53,31 @@ joinForm.addEventListener('submit', async (e) => {
   }
 
   const room = await DB.getRoom(code);
-  if (room.state !== 'lobby') {
-    joinError.textContent = 'Spelet har redan startat';
-    joinError.classList.remove('hidden');
-    return;
-  }
 
-  const count = await DB.getPlayerCount(code);
-  if (count >= 8) {
-    joinError.textContent = 'Rummet är fullt (max 8)';
-    joinError.classList.remove('hidden');
-    return;
-  }
-
-  // Check name uniqueness
+  // Check if this is a reconnect (same name exists in room)
+  let reconnecting = false;
+  let existingId = null;
   if (room.players) {
-    const names = Object.values(room.players).map(p => p.name);
-    if (names.includes(name)) {
-      joinError.textContent = 'Namnet är redan taget';
+    for (const [id, p] of Object.entries(room.players)) {
+      if (p.name === name) {
+        reconnecting = true;
+        existingId = id;
+        break;
+      }
+    }
+  }
+
+  if (!reconnecting) {
+    // New player — only allowed in lobby
+    if (room.state !== 'lobby') {
+      joinError.textContent = 'Spelet har redan startat';
+      joinError.classList.remove('hidden');
+      return;
+    }
+
+    const count = await DB.getPlayerCount(code);
+    if (count >= 8) {
+      joinError.textContent = 'Rummet är fullt (max 8)';
       joinError.classList.remove('hidden');
       return;
     }
@@ -70,14 +85,30 @@ joinForm.addEventListener('submit', async (e) => {
 
   roomCode = code;
   myName = name;
-  myId = 'player_' + Math.random().toString(36).substr(2, 9);
 
-  const color = PLAYER_COLORS[count];
-  await DB.joinRoom(code, myId, name, color);
-  DB.onPlayerDisconnect(code, myId);
-
-  playerNameDisplay.textContent = name;
-  switchScreen('waiting');
+  if (reconnecting) {
+    // Rejoin as existing player
+    myId = existingId;
+    await DB.updatePlayer(code, myId, { connected: true });
+    DB.onPlayerDisconnect(code, myId);
+    playerNameDisplay.textContent = name;
+    // Go straight to game if already playing
+    if (room.state === 'playing' || room.state === 'minigame') {
+      switchScreen('game');
+      loadShop();
+    } else {
+      switchScreen('waiting');
+    }
+  } else {
+    // Brand new player
+    myId = 'player_' + Math.random().toString(36).substr(2, 9);
+    const count = await DB.getPlayerCount(code);
+    const color = PLAYER_COLORS[count];
+    await DB.joinRoom(code, myId, name, color);
+    DB.onPlayerDisconnect(code, myId);
+    playerNameDisplay.textContent = name;
+    switchScreen('waiting');
+  }
 
   // Listen to room state
   DB.onRoomChange(code, (data) => {

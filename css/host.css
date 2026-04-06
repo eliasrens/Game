@@ -12,6 +12,12 @@
   color: var(--accent); text-shadow: 0 0 20px var(--accent);
   font-family: 'Courier New', monospace;
 }
+.qr-code {
+  margin: 1rem auto; display: flex; justify-content: center;
+  background: white; border-radius: 12px; padding: 1rem;
+  width: fit-content;
+}
+.qr-code svg { display: block; }
 .join-url { color: var(--text-dim); font-size: 1.1rem; margin-top: 0.5rem; }
 .players-lobby { text-align: center; min-width: 400px; }
 .player-list { display: flex; flex-wrap: wrap; gap: 1rem; justify-content: center; margin-top: 1rem; }

@@ -34,7 +34,16 @@ async function init() {
   DB.onDisconnectRemove(roomCode);
 
   roomCodeEl.textContent = roomCode;
-  joinUrlEl.textContent = `Öppna denna sida på telefonen och välj "Spelare"`;
+
+  // Generate QR code pointing to player page with room code
+  const baseUrl = window.location.href.replace(/\/[^/]*$/, '/');
+  const playerUrl = `${baseUrl}player.html?room=${roomCode}`;
+  const qr = qrcode(0, 'M');
+  qr.addData(playerUrl);
+  qr.make();
+  document.getElementById('qr-code').innerHTML = qr.createSvgTag(4, 0);
+
+  joinUrlEl.textContent = `Skanna QR-koden eller ange rumskoden manuellt`;
 
   engine = new GameEngine(roomCode);
 
