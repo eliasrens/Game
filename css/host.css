@@ -57,8 +57,8 @@
 /* === BOARD === */
 .board-container { display: flex; justify-content: center; align-items: center; }
 .board {
-  display: grid; grid-template-columns: repeat(7, 90px);
-  grid-template-rows: repeat(6, 90px); gap: 4px;
+  display: grid; grid-template-columns: repeat(8, 85px);
+  grid-template-rows: repeat(6, 85px); gap: 4px;
 }
 .tile {
   border-radius: 10px; display: flex; flex-direction: column;
