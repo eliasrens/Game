@@ -1,0 +1,149 @@
+/* === LOBBY === */
+#lobby-screen {
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  gap: 2rem;
+}
+.game-title { font-size: 3.5rem; text-shadow: 0 0 30px rgba(255,255,255,0.3); }
+.room-code-container { text-align: center; }
+.room-code {
+  font-size: 5rem; font-weight: 900; letter-spacing: 1rem;
+  color: var(--accent); text-shadow: 0 0 20px var(--accent);
+  font-family: 'Courier New', monospace;
+}
+.join-url { color: var(--text-dim); font-size: 1.1rem; margin-top: 0.5rem; }
+.players-lobby { text-align: center; min-width: 400px; }
+.player-list { display: flex; flex-wrap: wrap; gap: 1rem; justify-content: center; margin-top: 1rem; }
+.player-card {
+  background: var(--surface); border-radius: 12px; padding: 1rem 1.5rem;
+  display: flex; align-items: center; gap: 0.75rem;
+  font-size: 1.2rem; font-weight: 600;
+}
+.game-settings {
+  background: var(--surface); border-radius: 12px; padding: 1.5rem; min-width: 350px;
+}
+.game-settings h3 {
+  margin-bottom: 1rem; color: var(--text-dim);
+  font-size: 0.9rem; text-transform: uppercase; letter-spacing: 1px;
+}
+.setting-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; }
+.setting-row label { font-weight: 600; }
+.setting-row select, .setting-row input {
+  padding: 0.5rem 0.75rem; border: 2px solid rgba(255,255,255,0.15);
+  border-radius: 8px; background: var(--bg); color: var(--text);
+  font-size: 0.95rem; min-width: 180px;
+}
+.setting-row select:focus, .setting-row input:focus { outline: none; border-color: var(--accent); }
+
+/* === GAME SCREEN === */
+#game-screen {
+  display: grid; grid-template-columns: 1fr auto;
+  grid-template-rows: auto 1fr; height: 100vh; padding: 1rem; gap: 1rem;
+}
+.scoreboard {
+  grid-column: 1 / -1; display: flex; gap: 1rem;
+  justify-content: center; flex-wrap: wrap;
+}
+.score-card {
+  background: var(--surface); border-radius: 10px; padding: 0.6rem 1.2rem;
+  display: flex; align-items: center; gap: 0.75rem;
+  font-weight: 600; border: 2px solid transparent; transition: all 0.3s;
+}
+.score-card.active-turn { border-color: var(--accent); box-shadow: 0 0 15px rgba(52,152,219,0.4); }
+.score-points { color: var(--accent); }
+.score-coins { color: var(--yellow); }
+
+/* === BOARD === */
+.board-container { display: flex; justify-content: center; align-items: center; }
+.board {
+  display: grid; grid-template-columns: repeat(7, 90px);
+  grid-template-rows: repeat(6, 90px); gap: 4px;
+}
+.tile {
+  border-radius: 10px; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; position: relative;
+  font-weight: 700; font-size: 0.85rem; overflow: visible;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+.tile.green { background: linear-gradient(135deg, #27ae60, #2ecc71); box-shadow: 0 3px 10px rgba(46,204,113,0.3); }
+.tile.blue { background: linear-gradient(135deg, #2980b9, #3498db); box-shadow: 0 3px 10px rgba(52,152,219,0.3); }
+.tile.yellow { background: linear-gradient(135deg, #f39c12, #f1c40f); box-shadow: 0 3px 10px rgba(241,196,15,0.3); }
+.tile-id { font-size: 0.7rem; opacity: 0.7; position: absolute; top: 4px; left: 6px; }
+.piece-container { display: flex; gap: 3px; flex-wrap: wrap; justify-content: center; position: absolute; bottom: 4px; }
+.piece {
+  width: 18px; height: 18px; border-radius: 50%;
+  border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+  transition: all 0.5s ease;
+}
+.board-center { display: flex; align-items: center; justify-content: center; }
+.dice-display { font-size: 5rem; animation: diceRoll 0.5s ease-out; }
+@keyframes diceRoll { 0% { transform: scale(0.3) rotate(-180deg); opacity: 0; } 100% { transform: scale(1) rotate(0); opacity: 1; } }
+
+/* === HOUSE RULES === */
+.house-rules {
+  grid-row: 2; background: var(--surface); border-radius: 12px;
+  padding: 1rem; width: 220px; max-height: 100%; overflow-y: auto;
+}
+.house-rules h3 { margin-bottom: 0.75rem; color: var(--text-dim); font-size: 0.9rem; text-transform: uppercase; letter-spacing: 1px; }
+.house-rules ul { list-style: none; padding: 0; }
+.house-rules li { padding: 0.5rem 0; border-bottom: 1px solid rgba(255,255,255,0.1); font-size: 0.85rem; }
+.house-rules li .rule-author { color: var(--text-dim); font-size: 0.75rem; }
+
+/* === OVERLAY === */
+.overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.85);
+  display: flex; align-items: center; justify-content: center; z-index: 100;
+}
+.overlay-content {
+  background: var(--surface); border-radius: 20px; padding: 3rem;
+  max-width: 700px; width: 90%; text-align: center;
+}
+.overlay-content h2 { font-size: 2rem; margin-bottom: 1.5rem; }
+.trivia-options { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1.5rem; }
+.trivia-option {
+  padding: 1rem; border-radius: 10px; font-size: 1.2rem;
+  font-weight: 600; background: var(--bg); color: var(--text);
+}
+.timer-bar { height: 6px; background: var(--accent); border-radius: 3px; margin-top: 1.5rem; transition: width linear; }
+.wheel-container { position: relative; width: 350px; height: 350px; margin: 0 auto; }
+
+/* === BLACKJACK === */
+.bj-cards { display: flex; justify-content: center; gap: 0.5rem; margin-top: 0.5rem; }
+.bj-card {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 55px; height: 78px; background: white; color: #1a1a2e;
+  border-radius: 8px; font-size: 1.1rem; font-weight: 700;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+.bj-card.hidden-card { background: linear-gradient(135deg, #e74c3c, #c0392b); color: white; font-size: 1.5rem; }
+.bj-players-grid { display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; }
+.bj-player-box {
+  background: var(--bg); border: 2px solid; border-radius: 12px;
+  padding: 0.75rem 1.2rem; min-width: 120px;
+  display: flex; flex-direction: column; align-items: center; gap: 0.3rem;
+}
+.bj-player-name { font-weight: 700; }
+.bj-player-status.bust { color: var(--red); }
+.bj-player-status.stand { color: var(--yellow); }
+.bj-results { display: flex; flex-direction: column; gap: 0.75rem; margin-top: 1.5rem; }
+.bj-result-row {
+  display: flex; align-items: center; gap: 0.75rem;
+  padding: 0.6rem 1rem; border-radius: 10px; background: var(--bg);
+}
+.bj-result-row.winner { background: rgba(46,204,113,0.2); border: 1px solid var(--green); }
+.bj-result-row.loser { opacity: 0.6; }
+.bj-cards-small { color: var(--text-dim); font-size: 0.85rem; flex: 1; }
+.bj-total { font-weight: 700; font-size: 1.1rem; }
+
+/* === GAME OVER === */
+.game-over-winner { margin: 1.5rem 0; }
+.winner-crown { font-size: 4rem; }
+.winner-name { font-size: 2.5rem; font-weight: 900; }
+.winner-points { font-size: 1.5rem; color: var(--text-dim); margin-top: 0.5rem; }
+.rankings { display: flex; flex-direction: column; gap: 0.5rem; margin-top: 2rem; }
+.ranking-row {
+  display: flex; align-items: center; gap: 0.75rem;
+  padding: 0.6rem 1rem; background: var(--bg); border-radius: 8px;
+}
+.rank { font-weight: 700; font-size: 1.1rem; width: 2rem; }

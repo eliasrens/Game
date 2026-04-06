@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Party Board Game — TV</title>
+  <link rel="stylesheet" href="css/common.css">
+  <link rel="stylesheet" href="css/host.css">
+</head>
+<body>
+  <!-- LOBBY -->
+  <div id="lobby-screen" class="screen active">
+    <h1 class="game-title">Party Board Game</h1>
+    <div class="room-code-container">
+      <p>Rumskod:</p>
+      <div id="room-code" class="room-code">----</div>
+      <p class="join-url" id="join-url"></p>
+    </div>
+    <div class="players-lobby">
+      <h2>Spelare</h2>
+      <div id="player-list" class="player-list"></div>
+    </div>
+    <div class="game-settings">
+      <h3>Inställningar</h3>
+      <div class="setting-row">
+        <label>Vinstvillkor:</label>
+        <select id="win-condition">
+          <option value="points">Först till X poäng</option>
+          <option value="timer">Flest poäng efter X minuter</option>
+        </select>
+      </div>
+      <div class="setting-row">
+        <label id="win-value-label">Poängmål:</label>
+        <input type="number" id="win-value" value="30" min="10" max="200" step="5">
+      </div>
+    </div>
+    <button id="start-btn" class="btn btn-primary" disabled>Starta spelet</button>
+  </div>
+
+  <!-- GAME -->
+  <div id="game-screen" class="screen">
+    <div id="scoreboard" class="scoreboard"></div>
+
+    <div id="board-container" class="board-container">
+      <div id="board" class="board">
+        <!-- Top row: 0-6 -->
+        <div class="tile green" data-tile="0" style="grid-column:1;grid-row:1"><span class="tile-id">1</span></div>
+        <div class="tile green" data-tile="1" style="grid-column:2;grid-row:1"><span class="tile-id">2</span></div>
+        <div class="tile yellow" data-tile="2" style="grid-column:3;grid-row:1"><span class="tile-id">3</span></div>
+        <div class="tile green" data-tile="3" style="grid-column:4;grid-row:1"><span class="tile-id">4</span></div>
+        <div class="tile blue" data-tile="4" style="grid-column:5;grid-row:1"><span class="tile-id">5</span></div>
+        <div class="tile green" data-tile="5" style="grid-column:6;grid-row:1"><span class="tile-id">6</span></div>
+        <div class="tile green" data-tile="6" style="grid-column:7;grid-row:1"><span class="tile-id">7</span></div>
+        <!-- Right column: 7-11 -->
+        <div class="tile yellow" data-tile="7" style="grid-column:7;grid-row:2"><span class="tile-id">8</span></div>
+        <div class="tile green" data-tile="8" style="grid-column:7;grid-row:3"><span class="tile-id">9</span></div>
+        <div class="tile green" data-tile="9" style="grid-column:7;grid-row:4"><span class="tile-id">10</span></div>
+        <div class="tile blue" data-tile="10" style="grid-column:7;grid-row:5"><span class="tile-id">11</span></div>
+        <div class="tile green" data-tile="11" style="grid-column:7;grid-row:6"><span class="tile-id">12</span></div>
+        <!-- Bottom row: 12-17 -->
+        <div class="tile yellow" data-tile="12" style="grid-column:6;grid-row:6"><span class="tile-id">13</span></div>
+        <div class="tile green" data-tile="13" style="grid-column:5;grid-row:6"><span class="tile-id">14</span></div>
+        <div class="tile green" data-tile="14" style="grid-column:4;grid-row:6"><span class="tile-id">15</span></div>
+        <div class="tile blue" data-tile="15" style="grid-column:3;grid-row:6"><span class="tile-id">16</span></div>
+        <div class="tile green" data-tile="16" style="grid-column:2;grid-row:6"><span class="tile-id">17</span></div>
+        <div class="tile green" data-tile="17" style="grid-column:1;grid-row:6"><span class="tile-id">18</span></div>
+        <!-- Left column: 18-23 -->
+        <div class="tile yellow" data-tile="18" style="grid-column:1;grid-row:5"><span class="tile-id">19</span></div>
+        <div class="tile green" data-tile="19" style="grid-column:1;grid-row:4"><span class="tile-id">20</span></div>
+        <div class="tile blue" data-tile="20" style="grid-column:1;grid-row:3"><span class="tile-id">21</span></div>
+        <div class="tile green" data-tile="21" style="grid-column:1;grid-row:2"><span class="tile-id">22</span></div>
+        <div class="tile green" data-tile="22" style="grid-column:2;grid-row:2"><span class="tile-id">23</span></div>
+        <div class="tile yellow" data-tile="23" style="grid-column:3;grid-row:2"><span class="tile-id">24</span></div>
+        <!-- Center -->
+        <div class="board-center" style="grid-column:3/6;grid-row:3/5">
+          <div id="dice-display" class="dice-display hidden"></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="house-rules" class="house-rules">
+      <h3>Husregler</h3>
+      <ul id="rules-list"></ul>
+    </div>
+
+    <!-- Overlay -->
+    <div id="overlay" class="overlay hidden">
+      <div id="overlay-content" class="overlay-content"></div>
+    </div>
+  </div>
+
+  <!-- Firebase SDK (compat mode — works as regular scripts, no npm) -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+
+  <script src="js/firebase-config.js"></script>
+  <script src="js/db.js"></script>
+  <script src="js/questions.js"></script>
+  <script src="js/game-logic.js"></script>
+  <script src="js/host.js"></script>
+</body>
+</html>

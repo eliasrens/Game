@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Party Board Game — Spelare</title>
+  <link rel="stylesheet" href="css/common.css">
+  <link rel="stylesheet" href="css/player.css">
+</head>
+<body>
+  <!-- JOIN -->
+  <div id="join-screen" class="screen active">
+    <h1>Party Board Game</h1>
+    <form id="join-form">
+      <input type="text" id="room-input" placeholder="Rumskod" maxlength="4" autocomplete="off" required>
+      <input type="text" id="name-input" placeholder="Ditt namn" maxlength="12" autocomplete="off" required>
+      <button type="submit" class="btn btn-primary">Gå med!</button>
+      <p id="join-error" class="error-text hidden"></p>
+    </form>
+  </div>
+
+  <!-- WAITING -->
+  <div id="waiting-screen" class="screen">
+    <h2>Du är med!</h2>
+    <p id="player-name-display" class="player-name-display"></p>
+    <p class="waiting-text">Väntar på att hosten startar spelet...</p>
+  </div>
+
+  <!-- GAME -->
+  <div id="game-screen" class="screen">
+    <nav class="tabs">
+      <button class="tab active" data-tab="play">Spela</button>
+      <button class="tab" data-tab="shop">Butik</button>
+      <button class="tab" data-tab="rules">Regler</button>
+    </nav>
+
+    <div id="tab-play" class="tab-content active">
+      <div class="status-bar">
+        <span id="my-points" class="stat">&#9733; 0</span>
+        <span id="my-coins" class="stat coins">&#9881; 0</span>
+      </div>
+      <div class="turn-indicator">
+        <p id="turn-text">Väntar...</p>
+      </div>
+      <button id="dice-btn" class="dice-btn" disabled>
+        <span class="dice-emoji">&#127922;</span>
+        <span>Slå tärningen</span>
+      </button>
+      <div id="trivia-area" class="trivia-area hidden">
+        <h3 id="trivia-question"></h3>
+        <div id="trivia-buttons" class="trivia-buttons"></div>
+        <p id="trivia-feedback" class="trivia-feedback"></p>
+      </div>
+      <div id="bj-area" class="bj-area hidden"></div>
+    </div>
+
+    <div id="tab-shop" class="tab-content">
+      <h3>Butik</h3>
+      <div id="shop-items" class="shop-items"></div>
+      <div class="my-items">
+        <h4>Dina föremål</h4>
+        <div id="inventory"></div>
+      </div>
+    </div>
+
+    <div id="tab-rules" class="tab-content">
+      <h3>Husregler</h3>
+      <div id="rules-display" class="rules-display"></div>
+      <form id="rule-form" class="rule-form">
+        <input type="text" id="rule-input" placeholder="Skriv en regel..." maxlength="100">
+        <button type="submit" class="btn btn-small">Lägg till</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- DISCONNECTED -->
+  <div id="disconnected-screen" class="screen">
+    <h2>Hosten kopplade från</h2>
+    <p>Spelet är över.</p>
+  </div>
+
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+
+  <script src="js/firebase-config.js"></script>
+  <script src="js/db.js"></script>
+  <script src="js/game-logic.js"></script>
+  <script src="js/player.js"></script>
+</body>
+</html>

@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Party Board Game</title>
+  <link rel="stylesheet" href="css/common.css">
+  <style>
+    body {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      text-align: center;
+      gap: 2rem;
+      padding: 2rem;
+    }
+    h1 { font-size: 3rem; }
+    .subtitle { color: var(--text-dim); font-size: 1.1rem; margin-bottom: 1rem; }
+    .choice-buttons { display: flex; gap: 1.5rem; flex-wrap: wrap; justify-content: center; }
+    .choice-btn {
+      padding: 2rem 3rem;
+      border: 2px solid rgba(255,255,255,0.15);
+      border-radius: 16px;
+      background: var(--surface);
+      color: var(--text);
+      font-size: 1.3rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-decoration: none;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .choice-btn:hover {
+      border-color: var(--accent);
+      transform: translateY(-3px);
+      box-shadow: 0 8px 25px rgba(52,152,219,0.3);
+    }
+    .choice-icon { font-size: 3rem; }
+    .choice-desc { font-size: 0.85rem; color: var(--text-dim); font-weight: 400; }
+  </style>
+</head>
+<body>
+  <h1>Party Board Game</h1>
+  <p class="subtitle">Välj hur du vill ansluta</p>
+  <div class="choice-buttons">
+    <a href="host.html" class="choice-btn">
+      <span class="choice-icon">📺</span>
+      Host (TV)
+      <span class="choice-desc">Visa spelbrädet på storskärm</span>
+    </a>
+    <a href="player.html" class="choice-btn">
+      <span class="choice-icon">📱</span>
+      Spelare (Mobil)
+      <span class="choice-desc">Använd telefonen som kontroller</span>
+    </a>
+  </div>
+</body>
+</html>
