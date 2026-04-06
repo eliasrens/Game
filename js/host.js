@@ -19,8 +19,6 @@ const rulesList = document.getElementById('rules-list');
 let engine = null;
 let roomCode = null;
 let lastEvent = null;
-let processingDice = false;
-let lastTurn = null;
 
 // === INIT: Create room ===
 async function init() {
@@ -61,8 +59,6 @@ async function init() {
 
       if (action.type === 'roll-dice') {
         if (playerId !== engine.room.currentTurn) continue;
-        if (processingDice) continue;
-        processingDice = true;
         await db.ref(`rooms/${roomCode}/actions/${playerId}`).remove();
 
         const result = await engine.rollDice();
@@ -70,8 +66,6 @@ async function init() {
           setTimeout(() => {
             engine.handleTile(result.tile.type);
           }, 1500);
-        } else {
-          processingDice = false;
         }
       }
 
@@ -103,12 +97,6 @@ function renderFromState(data) {
     }
     renderScoreboard(players, data.currentTurn);
     renderPieces(players);
-  }
-
-  // Reset dice lock when turn changes
-  if (data.currentTurn && data.currentTurn !== lastTurn) {
-    lastTurn = data.currentTurn;
-    processingDice = false;
   }
 
   // Handle current event

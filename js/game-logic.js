@@ -53,6 +53,7 @@ class GameEngine {
     this.roomCode = roomCode;
     this.room = null;
     this.actionListenerActive = false;
+    this.diceRolledThisTurn = false;
   }
 
   // Start listening to room state
@@ -92,8 +93,11 @@ class GameEngine {
 
   // Roll dice for current player
   async rollDice() {
+    if (this.diceRolledThisTurn) return null;
+    this.diceRolledThisTurn = true;
+
     const player = this.getCurrentPlayer();
-    if (!player) return;
+    if (!player) return null;
 
     const roll = Math.floor(Math.random() * 6) + 1;
     const oldPos = player.position || 0;
@@ -131,6 +135,8 @@ class GameEngine {
 
   // Advance to next player's turn
   async advanceTurn() {
+    this.diceRolledThisTurn = false;
+
     const players = this.getPlayersArray();
     const currentIdx = players.findIndex(p => p.id === this.room.currentTurn);
     const nextIdx = (currentIdx + 1) % players.length;
