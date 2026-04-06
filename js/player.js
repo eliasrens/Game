@@ -4,6 +4,7 @@ let roomCode = null;
 let myId = null;
 let myName = '';
 let lastEvent = null;
+let diceRolled = false;
 
 // DOM
 const joinForm = document.getElementById('join-form');
@@ -138,12 +139,19 @@ function handleRoomUpdate(data) {
 
     // Update turn
     const isMyTurn = data.currentTurn === myId;
-    diceBtn.disabled = !isMyTurn;
-    if (isMyTurn) {
+    const hasEvent = !!data.currentEvent;
+    // Only enable dice if it's my turn, no event is active, and I haven't already rolled
+    diceBtn.disabled = !isMyTurn || hasEvent || diceRolled;
+
+    if (isMyTurn && !hasEvent && !diceRolled) {
       turnText.textContent = 'Din tur! Slå tärningen!';
       turnText.style.color = 'var(--accent)';
       if (navigator.vibrate) navigator.vibrate(200);
+    } else if (isMyTurn) {
+      // My turn but event active or already rolled
+      turnText.textContent = '';
     } else {
+      diceRolled = false; // Reset for next turn
       const currentPlayer = data.players?.[data.currentTurn];
       turnText.textContent = currentPlayer ? `${currentPlayer.name}s tur...` : 'Väntar...';
       turnText.style.color = 'var(--text-dim)';
@@ -437,10 +445,9 @@ function handleEvent(event, roomData) {
 
 // === DICE ===
 diceBtn.addEventListener('click', async () => {
-  if (diceBtn.disabled) return;
+  if (diceBtn.disabled || diceRolled) return;
+  diceRolled = true;
   diceBtn.disabled = true;
-  // Host's game engine handles the roll via Firebase listener
-  // We just signal that we want to roll
   await DB.playerAction(roomCode, myId, { type: 'roll-dice' });
 });
 
