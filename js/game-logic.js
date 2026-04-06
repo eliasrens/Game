@@ -81,9 +81,13 @@ class GameEngine {
     const players = this.getPlayersArray();
     if (players.length === 0) return;
 
+    // Lock the turn order so it never changes
+    this.turnOrder = players.map(p => p.id);
+
     await DB.updateRoom(this.roomCode, {
       state: 'playing',
-      currentTurn: players[0].id,
+      currentTurn: this.turnOrder[0],
+      turnOrder: this.turnOrder,
       winCondition: winCondition || 'points',
       winValue: winValue || 100,
       activeCategory: 'blandat',
@@ -137,9 +141,9 @@ class GameEngine {
   async advanceTurn() {
     this.diceRolledThisTurn = false;
 
+    // Use saved turn order (from Firebase if page reloaded, or from startGame)
+    const order = this.turnOrder || this.room.turnOrder || [];
     const players = this.getPlayersArray();
-    const currentIdx = players.findIndex(p => p.id === this.room.currentTurn);
-    const nextIdx = (currentIdx + 1) % players.length;
 
     // Check win condition
     if (this.room.winCondition === 'points') {
@@ -150,14 +154,19 @@ class GameEngine {
       }
     }
 
+    const currentIdx = order.indexOf(this.room.currentTurn);
+    const nextIdx = (currentIdx + 1) % order.length;
+    const nextId = order[nextIdx];
+    const nextPlayer = players.find(p => p.id === nextId);
+
     await DB.updateRoom(this.roomCode, {
-      currentTurn: players[nextIdx].id
+      currentTurn: nextId
     });
 
     await DB.pushEvent(this.roomCode, {
       type: 'turn-changed',
-      playerId: players[nextIdx].id,
-      playerName: players[nextIdx].name
+      playerId: nextId,
+      playerName: nextPlayer?.name || '?'
     });
   }
 

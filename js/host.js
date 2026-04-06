@@ -387,8 +387,15 @@ function drawWheel(slices, winningIndex) {
   const cx = 175, cy = 175, r = 160;
   const sliceAngle = (2 * Math.PI) / slices.length;
   const colors = ['#e74c3c','#3498db','#2ecc71','#f1c40f','#9b59b6','#e67e22','#1abc9c','#fd79a8'];
-  const targetAngle = -(winningIndex * sliceAngle + sliceAngle / 2) + Math.PI / 2;
-  const totalRotation = targetAngle + Math.PI * 8;
+  // Pointer is at right side (0 radians). We need winning slice to land there.
+  // Each slice i spans from i*sliceAngle to (i+1)*sliceAngle.
+  // We want the center of winning slice to end up at 0 radians (right/pointer).
+  // Final rotation mod 2pi should place winning slice center at 0.
+  // Slice center angle (unrotated) = winningIndex * sliceAngle + sliceAngle/2
+  // We need: finalRot + sliceCenterAngle ≡ 0 (mod 2pi) → finalRot = -sliceCenterAngle
+  const sliceCenter = winningIndex * sliceAngle + sliceAngle / 2;
+  const extraSpins = Math.PI * 2 * 5; // 5 full spins
+  const totalRotation = extraSpins - sliceCenter;
   let startTime = null;
   const duration = 3500;
 
@@ -410,6 +417,7 @@ function drawWheel(slices, winningIndex) {
       ctx.fillText(txt, r - 10, 4); ctx.restore();
     }
     ctx.restore();
+    // Pointer at right side
     ctx.beginPath(); ctx.moveTo(cx+r+10, cy); ctx.lineTo(cx+r+25, cy-10); ctx.lineTo(cx+r+25, cy+10);
     ctx.fillStyle = 'white'; ctx.fill();
     if (progress < 1) requestAnimationFrame(animate);
