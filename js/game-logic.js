@@ -142,7 +142,9 @@ class GameEngine {
     this.diceRolledThisTurn = false;
 
     // Use saved turn order (from Firebase if page reloaded, or from startGame)
-    const order = this.turnOrder || this.room.turnOrder || [];
+    // Firebase may convert arrays to objects, so ensure it's an array
+    let rawOrder = this.turnOrder || this.room.turnOrder || [];
+    const order = Array.isArray(rawOrder) ? rawOrder : Object.values(rawOrder);
     const players = this.getPlayersArray();
 
     // Check win condition

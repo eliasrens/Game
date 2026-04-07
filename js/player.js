@@ -141,6 +141,7 @@ function handleRoomUpdate(data) {
     // Update turn
     currentTurnId = data.currentTurn;
     const isMyTurn = data.currentTurn === myId;
+    console.log('[TURN DEBUG] myId:', myId, 'currentTurn:', data.currentTurn, 'isMyTurn:', isMyTurn);
     const hasEvent = !!data.currentEvent;
     const alreadyRolled = rolledForTurn === data.currentTurn;
     const canRoll = isMyTurn && !hasEvent && !alreadyRolled;
@@ -151,7 +152,10 @@ function handleRoomUpdate(data) {
       turnText.textContent = 'Din tur! Slå tärningen!';
       turnText.style.color = 'var(--accent)';
       if (navigator.vibrate) navigator.vibrate(200);
-    } else if (!isMyTurn) {
+    } else if (isMyTurn) {
+      turnText.textContent = 'Din tur — vänta...';
+      turnText.style.color = 'var(--accent)';
+    } else {
       const currentPlayer = data.players?.[data.currentTurn];
       turnText.textContent = currentPlayer ? `${currentPlayer.name}s tur...` : 'Väntar...';
       turnText.style.color = 'var(--text-dim)';
