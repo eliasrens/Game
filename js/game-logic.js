@@ -161,14 +161,10 @@ class GameEngine {
     const nextId = order[nextIdx];
     const nextPlayer = players.find(p => p.id === nextId);
 
+    // Clear any lingering event first, then set turn
+    await DB.clearEvent(this.roomCode);
     await DB.updateRoom(this.roomCode, {
       currentTurn: nextId
-    });
-
-    await DB.pushEvent(this.roomCode, {
-      type: 'turn-changed',
-      playerId: nextId,
-      playerName: nextPlayer?.name || '?'
     });
   }
 
