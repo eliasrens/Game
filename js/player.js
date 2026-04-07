@@ -106,7 +106,8 @@ joinForm.addEventListener('submit', async (e) => {
     myId = 'player_' + Math.random().toString(36).substr(2, 9);
     const count = await DB.getPlayerCount(code);
     const color = PLAYER_COLORS[count];
-    await DB.joinRoom(code, myId, name, color);
+    const emoji = PLAYER_EMOJIS[count] || '\uD83C\uDFB2';
+    await DB.joinRoom(code, myId, name, color, emoji);
     DB.onPlayerDisconnect(code, myId);
     playerNameDisplay.textContent = name;
     switchScreen('waiting');

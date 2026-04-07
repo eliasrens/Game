@@ -31,10 +31,11 @@ const DB = {
   },
 
   // Add a player to a room
-  async joinRoom(code, playerId, name, color) {
+  async joinRoom(code, playerId, name, color, emoji) {
     await db.ref(`rooms/${code}/players/${playerId}`).set({
       name,
       color,
+      emoji: emoji || '\uD83C\uDFB2',
       position: 0,
       points: 0,
       coins: 0,

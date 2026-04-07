@@ -105,9 +105,10 @@ function renderFromState(data) {
     handleEvent(data.currentEvent, players);
   }
 
-  // No active event — hide overlay
-  if (!data.currentEvent && !overlay.classList.contains('hidden')) {
-    overlay.classList.add('hidden');
+  // No active event — hide overlay and dice
+  if (!data.currentEvent) {
+    if (!overlay.classList.contains('hidden')) overlay.classList.add('hidden');
+    diceDisplay.classList.add('hidden');
   }
 
   // House rules
@@ -136,7 +137,6 @@ function handleEvent(event, players) {
 
     case 'turn-changed':
       diceDisplay.classList.add('hidden');
-      showToast(`${event.playerName}s tur!`);
       break;
 
     case 'trivia':
@@ -337,7 +337,7 @@ function switchScreen(name) {
 function renderScoreboard(players, currentTurn) {
   scoreboard.innerHTML = players.map(p => `
     <div class="score-card ${p.id === currentTurn ? 'active-turn' : ''}">
-      <div class="player-dot" style="background:${p.color}"></div>
+      <span class="score-emoji">${p.emoji || '\uD83C\uDFB2'}</span>
       <span>${p.name}</span>
       <span class="score-points">\u2605 ${p.points || 0}</span>
       <span class="score-coins">\u2699 ${p.coins || 0}</span>
@@ -361,7 +361,7 @@ function renderPieces(players) {
     pls.forEach(p => {
       const piece = document.createElement('div');
       piece.className = 'piece';
-      piece.style.background = p.color;
+      piece.textContent = p.emoji || '\uD83C\uDFB2';
       piece.title = p.name;
       container.appendChild(piece);
     });

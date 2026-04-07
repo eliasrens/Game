@@ -1,6 +1,9 @@
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;900&display=swap');
+
 :root {
-  --bg: #1a1a2e;
-  --surface: #16213e;
+  --bg: #0d0d1a;
+  --surface: rgba(255,255,255,0.07);
+  --surface-solid: #16213e;
   --text: #eee;
   --text-dim: #8899aa;
   --accent: #3498db;
@@ -8,16 +11,20 @@
   --red: #e74c3c;
   --yellow: #f1c40f;
   --blue: #3498db;
+  --neon-green: #39ff14;
+  --neon-pink: #ff6ec7;
+  --neon-blue: #00d4ff;
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
 body {
-  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-  background: var(--bg);
+  font-family: 'Nunito', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  background: radial-gradient(ellipse at 50% 40%, #1a1a3e 0%, #0d0d1a 70%);
   color: var(--text);
   overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
 }
 
 h1, h2, h3, h4 { color: var(--text); }
@@ -28,21 +35,23 @@ h1, h2, h3, h4 { color: var(--text); }
 .btn {
   padding: 1rem 2.5rem;
   border: none;
-  border-radius: 12px;
+  border-radius: 14px;
   font-size: 1.1rem;
   font-weight: 700;
   cursor: pointer;
   transition: all 0.2s;
+  font-family: inherit;
 }
 
 .btn-primary {
   background: linear-gradient(135deg, var(--accent), #2980b9);
   color: white;
+  box-shadow: 0 0 20px rgba(52, 152, 219, 0.3);
 }
 
 .btn-primary:hover {
   transform: translateY(-2px);
-  box-shadow: 0 4px 15px rgba(52, 152, 219, 0.4);
+  box-shadow: 0 4px 25px rgba(52, 152, 219, 0.5);
 }
 
 .btn-primary:disabled {
@@ -61,6 +70,7 @@ h1, h2, h3, h4 { color: var(--text); }
   color: white;
   font-weight: 600;
   cursor: pointer;
+  font-family: inherit;
 }
 
 .hidden { display: none !important; }
@@ -79,14 +89,16 @@ h1, h2, h3, h4 { color: var(--text); }
   bottom: 2rem;
   left: 50%;
   transform: translateX(-50%);
-  background: var(--surface);
+  background: var(--surface-solid);
   padding: 1rem 2rem;
-  border-radius: 12px;
+  border-radius: 14px;
   font-size: 1.2rem;
   font-weight: 600;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+  box-shadow: 0 4px 30px rgba(0,0,0,0.6);
+  border: 1px solid rgba(255,255,255,0.1);
   z-index: 200;
   animation: toastIn 0.3s ease-out;
+  backdrop-filter: blur(10px);
 }
 
 @keyframes toastIn {
