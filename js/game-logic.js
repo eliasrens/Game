@@ -3,10 +3,13 @@
 
 // Available minigames — add new ones here
 const AVAILABLE_MINIGAMES = [
-  { id: 'blackjack', name: 'Blackjack', icon: '🃏', description: 'Slå dealern! Närmast 21 vinner.' }
-  // Future games:
-  // { id: 'higher-lower', name: 'Högre eller Lägre', icon: '📊', description: 'Gissa om nästa tal är högre eller lägre.' },
-  // { id: 'reaction', name: 'Reaktionstest', icon: '⚡', description: 'Snabbaste reflexerna vinner!' },
+  { id: 'blackjack', name: 'Blackjack', icon: '🃏', description: 'Slå dealern! Närmast 21 vinner.' },
+  { id: 'reaction', name: 'Reaktionstest', icon: '⚡', description: 'Snabbaste reflexerna vinner!' },
+  { id: 'auction', name: 'Auktion', icon: '💰', description: 'Buda med mynt om 10 poäng!' },
+  { id: 'guessNumber', name: 'Gissa talet', icon: '🔢', description: 'Närmast hemliga talet vinner!' },
+  { id: 'rps', name: 'Sten Sax Påse', icon: '✊', description: 'Klassikern! Sista kvar vinner.' },
+  { id: 'bomb', name: 'Bomb-timer', icon: '💣', description: 'Skicka bomben vidare innan den smäller!' },
+  { id: 'tapFrenzy', name: 'Snabb-klick', icon: '👆', description: 'Tryck så snabbt du kan på 5 sekunder!' }
 ];
 
 const BOARD = [
@@ -33,7 +36,6 @@ const SHOP_ITEMS = [
   { id: 'changeCategory', name: 'Byt kategori', description: 'Byt trivia-kategori till valfri', cost: 5, type: 'category' },
   { id: 'wheelSlice', name: 'Hjulfält', description: 'Lägg till en egen regel på Lyckohjulet', cost: 5, type: 'wheel' },
   { id: 'clearWheel', name: 'Töm hjulet', description: 'Ta bort alla tillagda hjulfält', cost: 8, type: 'instant' },
-  { id: 'sabotage', name: 'Sabotage', description: 'Frys en motståndares skärm i 5 sek', cost: 15, type: 'usable' },
   { id: 'shield', name: 'Sköld', description: 'Blockerar nästa negativa händelse', cost: 25, type: 'passive' }
 ];
 
@@ -161,7 +163,6 @@ class GameEngine {
     const currentIdx = order.indexOf(this.room.currentTurn);
     const nextIdx = (currentIdx + 1) % order.length;
     const nextId = order[nextIdx];
-    const nextPlayer = players.find(p => p.id === nextId);
 
     // Clear any lingering event first, then set turn
     await DB.clearEvent(this.roomCode);
@@ -275,7 +276,7 @@ class GameEngine {
         resultText: result.text
       });
 
-      setTimeout(() => this.advanceTurn(), 6000);
+      setTimeout(() => this.advanceTurn(), 3000);
     }, 4000);
   }
 
@@ -762,10 +763,367 @@ class GameEngine {
     await DB.clearActions(this.roomCode);
     switch (gameId) {
       case 'blackjack': await this.startBlackjack(); break;
-      // Add more minigames here:
-      // case 'higher-lower': await this.startHigherLower(); break;
+      case 'reaction': await this.startReaction(); break;
+      case 'auction': await this.startAuction(); break;
+      case 'guessNumber': await this.startGuessNumber(); break;
+      case 'rps': await this.startRPS(); break;
+      case 'bomb': await this.startBomb(); break;
+      case 'tapFrenzy': await this.startTapFrenzy(); break;
       default: await this.startBlackjack();
     }
+  }
+
+  // === REACTION TEST ===
+
+  async startReaction() {
+    const delay = 2000 + Math.floor(Math.random() * 5000); // 2-7 sec wait
+    await DB.pushEvent(this.roomCode, { type: 'reaction', phase: 'waiting' });
+
+    setTimeout(async () => {
+      const goTime = Date.now();
+      await DB.pushEvent(this.roomCode, { type: 'reaction', phase: 'go', goTime });
+      await DB.clearActions(this.roomCode);
+
+      this.listenForActions(async (actions) => {
+        const players = this.getPlayersArray();
+        const results = [];
+        for (const [pid, a] of Object.entries(actions)) {
+          if (a.type === 'reaction-tap' && !a.processed) {
+            const p = players.find(x => x.id === pid);
+            results.push({ id: pid, name: p?.name || '?', time: a.tapTime - goTime });
+          }
+        }
+        if (results.length >= players.length) {
+          this.stopListeningActions();
+          clearTimeout(this._reactionTimeout);
+          results.sort((a, b) => a.time - b.time);
+          const winner = results[0];
+          if (winner) {
+            await DB.updatePlayer(this.roomCode, winner.id, { coins: (players.find(p => p.id === winner.id)?.coins || 0) + 5 });
+          }
+          await DB.pushEvent(this.roomCode, { type: 'reaction', phase: 'results', results, winnerId: winner?.id });
+          setTimeout(() => this.advanceTurn(), 3000);
+        }
+      });
+
+      this._reactionTimeout = setTimeout(async () => {
+        this.stopListeningActions();
+        const room = await DB.getRoom(this.roomCode);
+        const actions = room?.actions || {};
+        const players = this.getPlayersArray();
+        const results = [];
+        for (const [pid, a] of Object.entries(actions)) {
+          if (a.type === 'reaction-tap') {
+            const p = players.find(x => x.id === pid);
+            results.push({ id: pid, name: p?.name || '?', time: a.tapTime - goTime });
+          }
+        }
+        results.sort((a, b) => a.time - b.time);
+        const winner = results[0];
+        if (winner) {
+          await DB.updatePlayer(this.roomCode, winner.id, { coins: (players.find(p => p.id === winner.id)?.coins || 0) + 5 });
+        }
+        await DB.pushEvent(this.roomCode, { type: 'reaction', phase: 'results', results, winnerId: winner?.id });
+        setTimeout(() => this.advanceTurn(), 3000);
+      }, 5000);
+    }, delay);
+  }
+
+  // === AUCTION ===
+
+  async startAuction() {
+    await DB.clearActions(this.roomCode);
+    await DB.pushEvent(this.roomCode, { type: 'auction', phase: 'bidding', prize: 10 });
+
+    this.listenForActions(async (actions) => {
+      const players = this.getPlayersArray();
+      let bidCount = 0;
+      for (const [pid, a] of Object.entries(actions)) {
+        if (a.type === 'auction-bid' && !a.processed) bidCount++;
+      }
+      if (bidCount >= players.length) {
+        clearTimeout(this._auctionTimeout);
+        this.stopListeningActions();
+        await this.resolveAuction();
+      }
+    });
+
+    this._auctionTimeout = setTimeout(async () => {
+      this.stopListeningActions();
+      await this.resolveAuction();
+    }, 15000);
+  }
+
+  async resolveAuction() {
+    const room = await DB.getRoom(this.roomCode);
+    const actions = room?.actions || {};
+    const players = this.getPlayersArray();
+    const bids = [];
+
+    for (const [pid, a] of Object.entries(actions)) {
+      if (a.type === 'auction-bid') {
+        const p = players.find(x => x.id === pid);
+        const maxCoins = p?.coins || 0;
+        const bid = Math.min(a.amount || 0, maxCoins);
+        bids.push({ id: pid, name: p?.name || '?', bid });
+      }
+    }
+
+    bids.sort((a, b) => b.bid - a.bid);
+    const winner = bids[0];
+
+    if (winner && winner.bid > 0) {
+      const p = players.find(x => x.id === winner.id);
+      await DB.updatePlayer(this.roomCode, winner.id, {
+        coins: (p?.coins || 0) - winner.bid,
+        points: (p?.points || 0) + 10
+      });
+    }
+
+    await DB.pushEvent(this.roomCode, { type: 'auction', phase: 'results', bids, winnerId: winner?.id });
+    await DB.clearActions(this.roomCode);
+    setTimeout(() => this.advanceTurn(), 3000);
+  }
+
+  // === GUESS THE NUMBER ===
+
+  async startGuessNumber() {
+    const secret = Math.floor(Math.random() * 100) + 1;
+    this._guessSecret = secret;
+    await DB.clearActions(this.roomCode);
+    await DB.pushEvent(this.roomCode, { type: 'guessNumber', phase: 'guessing' });
+
+    this.listenForActions(async (actions) => {
+      const players = this.getPlayersArray();
+      let guessCount = 0;
+      for (const [pid, a] of Object.entries(actions)) {
+        if (a.type === 'guess-number' && !a.processed) guessCount++;
+      }
+      if (guessCount >= players.length) {
+        clearTimeout(this._guessTimeout);
+        this.stopListeningActions();
+        await this.resolveGuessNumber();
+      }
+    });
+
+    this._guessTimeout = setTimeout(async () => {
+      this.stopListeningActions();
+      await this.resolveGuessNumber();
+    }, 15000);
+  }
+
+  async resolveGuessNumber() {
+    const secret = this._guessSecret;
+    const room = await DB.getRoom(this.roomCode);
+    const actions = room?.actions || {};
+    const players = this.getPlayersArray();
+    const guesses = [];
+
+    for (const [pid, a] of Object.entries(actions)) {
+      if (a.type === 'guess-number') {
+        const p = players.find(x => x.id === pid);
+        guesses.push({ id: pid, name: p?.name || '?', guess: a.guess, diff: Math.abs(a.guess - secret) });
+      }
+    }
+
+    guesses.sort((a, b) => a.diff - b.diff);
+    const winner = guesses[0];
+
+    if (winner) {
+      const p = players.find(x => x.id === winner.id);
+      await DB.updatePlayer(this.roomCode, winner.id, { points: (p?.points || 0) + 3 });
+    }
+
+    await DB.pushEvent(this.roomCode, { type: 'guessNumber', phase: 'results', secret, guesses, winnerId: winner?.id });
+    await DB.clearActions(this.roomCode);
+    setTimeout(() => this.advanceTurn(), 4000);
+  }
+
+  // === ROCK PAPER SCISSORS ===
+
+  async startRPS() {
+    this._rpsAlivePlayers = this.getPlayersArray().map(p => p.id);
+    this._rpsRound = 1;
+    await this.startRPSRound();
+  }
+
+  async startRPSRound() {
+    await DB.clearActions(this.roomCode);
+    await DB.pushEvent(this.roomCode, {
+      type: 'rps', phase: 'choose',
+      round: this._rpsRound,
+      alivePlayers: this._rpsAlivePlayers
+    });
+
+    this.listenForActions(async (actions) => {
+      let choiceCount = 0;
+      for (const pid of this._rpsAlivePlayers) {
+        if (actions[pid]?.type === 'rps-choice' && !actions[pid].processed) choiceCount++;
+      }
+      if (choiceCount >= this._rpsAlivePlayers.length) {
+        clearTimeout(this._rpsTimeout);
+        this.stopListeningActions();
+        await this.resolveRPSRound();
+      }
+    });
+
+    this._rpsTimeout = setTimeout(async () => {
+      this.stopListeningActions();
+      // Auto-pick for missing players
+      for (const pid of this._rpsAlivePlayers) {
+        const room = await DB.getRoom(this.roomCode);
+        if (!room?.actions?.[pid] || room.actions[pid].type !== 'rps-choice') {
+          await DB.playerAction(this.roomCode, pid, { type: 'rps-choice', choice: ['rock','paper','scissors'][Math.floor(Math.random() * 3)] });
+        }
+      }
+      await this.resolveRPSRound();
+    }, 10000);
+  }
+
+  async resolveRPSRound() {
+    const room = await DB.getRoom(this.roomCode);
+    const actions = room?.actions || {};
+    const players = this.getPlayersArray();
+    const choices = {};
+
+    for (const pid of this._rpsAlivePlayers) {
+      choices[pid] = actions[pid]?.choice || 'rock';
+    }
+
+    const uniqueChoices = [...new Set(Object.values(choices))];
+    let eliminated = [];
+
+    if (uniqueChoices.length === 2) {
+      // Determine winner: rock>scissors, scissors>paper, paper>rock
+      const beats = { rock: 'scissors', scissors: 'paper', paper: 'rock' };
+      const winChoice = beats[uniqueChoices[0]] === uniqueChoices[1] ? uniqueChoices[0] : uniqueChoices[1];
+      eliminated = this._rpsAlivePlayers.filter(pid => choices[pid] !== winChoice);
+    }
+    // If 1 or 3 unique choices: draw, no elimination
+
+    const roundResults = this._rpsAlivePlayers.map(pid => ({
+      id: pid,
+      name: players.find(p => p.id === pid)?.name || '?',
+      choice: choices[pid],
+      eliminated: eliminated.includes(pid)
+    }));
+
+    this._rpsAlivePlayers = this._rpsAlivePlayers.filter(pid => !eliminated.includes(pid));
+
+    await DB.pushEvent(this.roomCode, {
+      type: 'rps', phase: 'round-result',
+      round: this._rpsRound,
+      roundResults,
+      alivePlayers: this._rpsAlivePlayers
+    });
+
+    if (this._rpsAlivePlayers.length <= 1 || this._rpsRound >= 5) {
+      // Game over
+      setTimeout(async () => {
+        const winnerId = this._rpsAlivePlayers[0];
+        if (winnerId) {
+          const p = players.find(x => x.id === winnerId);
+          await DB.updatePlayer(this.roomCode, winnerId, { coins: (p?.coins || 0) + 8 });
+        }
+        await DB.pushEvent(this.roomCode, {
+          type: 'rps', phase: 'final',
+          winnerId,
+          winnerName: players.find(p => p.id === winnerId)?.name || '?'
+        });
+        setTimeout(() => this.advanceTurn(), 3000);
+      }, 2000);
+    } else {
+      this._rpsRound++;
+      setTimeout(() => this.startRPSRound(), 2500);
+    }
+  }
+
+  // === BOMB TIMER ===
+
+  async startBomb() {
+    const players = this.getPlayersArray();
+    const fuseTime = 5000 + Math.floor(Math.random() * 10000); // 5-15 sec
+    this._bombHolder = players[Math.floor(Math.random() * players.length)].id;
+    this._bombStart = Date.now();
+    this._bombFuse = fuseTime;
+
+    await DB.clearActions(this.roomCode);
+    await DB.pushEvent(this.roomCode, {
+      type: 'bomb', phase: 'ticking',
+      holderId: this._bombHolder,
+      holderName: players.find(p => p.id === this._bombHolder)?.name || '?',
+      players: players.map(p => ({ id: p.id, name: p.name }))
+    });
+
+    this.listenForActions(async (actions) => {
+      const holderAction = actions[this._bombHolder];
+      if (!holderAction || holderAction.type !== 'bomb-pass' || holderAction.processed) return;
+
+      await db.ref(`rooms/${this.roomCode}/actions/${this._bombHolder}/processed`).set(true);
+      const targetId = holderAction.targetId;
+      const targetPlayer = players.find(p => p.id === targetId);
+      this._bombHolder = targetId;
+
+      await DB.pushEvent(this.roomCode, {
+        type: 'bomb', phase: 'ticking',
+        holderId: targetId,
+        holderName: targetPlayer?.name || '?',
+        players: players.map(p => ({ id: p.id, name: p.name }))
+      });
+    });
+
+    this._bombTimeout = setTimeout(async () => {
+      this.stopListeningActions();
+      const loser = players.find(p => p.id === this._bombHolder);
+      if (loser) {
+        await DB.updatePlayer(this.roomCode, this._bombHolder, {
+          points: Math.max(0, (loser.points || 0) - 3)
+        });
+      }
+      await DB.pushEvent(this.roomCode, {
+        type: 'bomb', phase: 'exploded',
+        loserId: this._bombHolder,
+        loserName: loser?.name || '?'
+      });
+      await DB.clearActions(this.roomCode);
+      setTimeout(() => this.advanceTurn(), 3000);
+    }, fuseTime);
+  }
+
+  // === TAP FRENZY ===
+
+  async startTapFrenzy() {
+    await DB.clearActions(this.roomCode);
+    await DB.pushEvent(this.roomCode, { type: 'tapFrenzy', phase: 'ready' });
+
+    setTimeout(async () => {
+      await DB.clearActions(this.roomCode);
+      await DB.pushEvent(this.roomCode, { type: 'tapFrenzy', phase: 'go' });
+
+      setTimeout(async () => {
+        const room = await DB.getRoom(this.roomCode);
+        const actions = room?.actions || {};
+        const players = this.getPlayersArray();
+        const results = [];
+
+        for (const p of players) {
+          const a = actions[p.id];
+          results.push({ id: p.id, name: p.name, taps: a?.taps || 0 });
+        }
+
+        results.sort((a, b) => b.taps - a.taps);
+        const winner = results[0];
+
+        if (winner && winner.taps > 0) {
+          const p = players.find(x => x.id === winner.id);
+          await DB.updatePlayer(this.roomCode, winner.id, { coins: (p?.coins || 0) + 5 });
+        }
+
+        await DB.pushEvent(this.roomCode, { type: 'tapFrenzy', phase: 'results', results, winnerId: winner?.id });
+        await DB.clearActions(this.roomCode);
+        setTimeout(() => this.advanceTurn(), 3000);
+      }, 5000); // 5 sec of tapping
+    }, 2000); // 2 sec countdown
   }
 
   // === END GAME ===

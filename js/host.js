@@ -268,8 +268,113 @@ function handleEvent(event, players) {
       }
       break;
 
-    case 'sabotage':
-      showToast(`${event.fromName} saboterade ${event.targetName}! 💣`);
+    // === REACTION TEST ===
+    case 'reaction':
+      overlay.classList.remove('hidden');
+      if (event.phase === 'waiting') {
+        overlayContent.innerHTML = '<h2>⚡ Reaktionstest</h2><p style="font-size:2rem;">Vänta på det...</p>';
+      } else if (event.phase === 'go') {
+        overlayContent.innerHTML = '<h2 style="font-size:4rem;color:var(--green);">TRYCK NU!</h2>';
+      } else if (event.phase === 'results') {
+        const resHtml = event.results.map(r =>
+          `<div class="ranking-row" style="${r.id === event.winnerId ? 'border:2px solid var(--green);' : ''}">
+            <span>${r.name}</span><span style="margin-left:auto;font-weight:700;">${r.time}ms</span>
+            ${r.id === event.winnerId ? '<span>🏆</span>' : ''}
+          </div>`
+        ).join('');
+        overlayContent.innerHTML = `<h2>⚡ Resultat</h2><div class="rankings">${resHtml}</div>`;
+        setTimeout(() => overlay.classList.add('hidden'), 3000);
+      }
+      break;
+
+    // === AUCTION ===
+    case 'auction':
+      overlay.classList.remove('hidden');
+      if (event.phase === 'bidding') {
+        overlayContent.innerHTML = '<h2>💰 Auktion — 10 Poäng!</h2><p style="font-size:1.3rem;">Spelarna lägger sina bud...</p><div class="timer-bar" id="auction-timer"></div>';
+        const at = document.getElementById('auction-timer');
+        at.style.width = '100%';
+        requestAnimationFrame(() => { at.style.width = '0%'; at.style.transitionDuration = '15s'; });
+      } else if (event.phase === 'results') {
+        const resHtml = event.bids.map(b =>
+          `<div class="ranking-row" style="${b.id === event.winnerId ? 'border:2px solid var(--green);' : ''}">
+            <span>${b.name}</span><span style="margin-left:auto;font-weight:700;">${b.bid} mynt</span>
+            ${b.id === event.winnerId ? '<span>🏆 +10p</span>' : ''}
+          </div>`
+        ).join('');
+        overlayContent.innerHTML = `<h2>💰 Resultat</h2><div class="rankings">${resHtml}</div>`;
+        setTimeout(() => overlay.classList.add('hidden'), 3000);
+      }
+      break;
+
+    // === GUESS NUMBER ===
+    case 'guessNumber':
+      overlay.classList.remove('hidden');
+      if (event.phase === 'guessing') {
+        overlayContent.innerHTML = '<h2>🔢 Gissa talet (1–100)</h2><p style="font-size:1.3rem;">Spelarna gissar...</p><div class="timer-bar" id="guess-timer"></div>';
+        const gt = document.getElementById('guess-timer');
+        gt.style.width = '100%';
+        requestAnimationFrame(() => { gt.style.width = '0%'; gt.style.transitionDuration = '15s'; });
+      } else if (event.phase === 'results') {
+        const resHtml = event.guesses.map(g =>
+          `<div class="ranking-row" style="${g.id === event.winnerId ? 'border:2px solid var(--green);' : ''}">
+            <span>${g.name}</span><span style="margin-left:auto;">${g.guess} (${g.diff} ifrån)</span>
+            ${g.id === event.winnerId ? '<span>🏆</span>' : ''}
+          </div>`
+        ).join('');
+        overlayContent.innerHTML = `<h2>🔢 Rätt svar: ${event.secret}</h2><div class="rankings">${resHtml}</div>`;
+        setTimeout(() => overlay.classList.add('hidden'), 4000);
+      }
+      break;
+
+    // === ROCK PAPER SCISSORS ===
+    case 'rps':
+      overlay.classList.remove('hidden');
+      if (event.phase === 'choose') {
+        overlayContent.innerHTML = `<h2>✊ Sten Sax Påse — Runda ${event.round}</h2><p style="font-size:1.5rem;">Välj!</p>`;
+      } else if (event.phase === 'round-result') {
+        const choiceEmoji = { rock: '🪨', scissors: '✂️', paper: '📄' };
+        const resHtml = event.roundResults.map(r =>
+          `<div class="ranking-row" style="${r.eliminated ? 'opacity:0.4;' : ''}">
+            <span>${r.name}</span><span style="margin-left:auto;font-size:1.5rem;">${choiceEmoji[r.choice] || r.choice}</span>
+            <span>${r.eliminated ? '❌' : '✅'}</span>
+          </div>`
+        ).join('');
+        overlayContent.innerHTML = `<h2>✊ Runda ${event.round}</h2><div class="rankings">${resHtml}</div>`;
+      } else if (event.phase === 'final') {
+        overlayContent.innerHTML = `<h2>🏆 ${event.winnerName} vinner!</h2><p style="font-size:1.5rem;">+8 mynt</p>`;
+        setTimeout(() => overlay.classList.add('hidden'), 3000);
+      }
+      break;
+
+    // === BOMB TIMER ===
+    case 'bomb':
+      overlay.classList.remove('hidden');
+      if (event.phase === 'ticking') {
+        overlayContent.innerHTML = `<h2>💣 Bomb-timer!</h2><p style="font-size:2rem;">${event.holderName} håller bomben! 😰</p>`;
+      } else if (event.phase === 'exploded') {
+        overlayContent.innerHTML = `<h2 style="font-size:3rem;">💥 BOOM!</h2><p style="font-size:1.5rem;">${event.loserName} sprängdes! −3 poäng</p>`;
+        setTimeout(() => overlay.classList.add('hidden'), 3000);
+      }
+      break;
+
+    // === TAP FRENZY ===
+    case 'tapFrenzy':
+      overlay.classList.remove('hidden');
+      if (event.phase === 'ready') {
+        overlayContent.innerHTML = '<h2>👆 Snabb-klick</h2><p style="font-size:1.5rem;">Gör er redo...</p>';
+      } else if (event.phase === 'go') {
+        overlayContent.innerHTML = '<h2 style="font-size:3rem;color:var(--green);">👆 KÖR!</h2><p style="font-size:1.3rem;">5 sekunder!</p>';
+      } else if (event.phase === 'results') {
+        const resHtml = event.results.map(r =>
+          `<div class="ranking-row" style="${r.id === event.winnerId ? 'border:2px solid var(--green);' : ''}">
+            <span>${r.name}</span><span style="margin-left:auto;font-weight:700;">${r.taps} tryck</span>
+            ${r.id === event.winnerId ? '<span>🏆</span>' : ''}
+          </div>`
+        ).join('');
+        overlayContent.innerHTML = `<h2>👆 Resultat</h2><div class="rankings">${resHtml}</div>`;
+        setTimeout(() => overlay.classList.add('hidden'), 3000);
+      }
       break;
 
     case 'shield-used':

@@ -421,9 +421,192 @@ function handleEvent(event, roomData) {
       }
       break;
 
-    case 'sabotage':
-      if (event.targetId === myId) {
-        showFreeze(event.fromName);
+    // === REACTION TEST ===
+    case 'reaction':
+      diceBtn.classList.add('hidden');
+      bjArea.classList.remove('hidden');
+      if (event.phase === 'waiting') {
+        bjArea.innerHTML = '<h3>⚡ Reaktionstest</h3><p style="font-size:1.5rem;">Vänta på det...</p>';
+      } else if (event.phase === 'go') {
+        bjArea.innerHTML = `
+          <h3>⚡ TRYCK NU!</h3>
+          <button class="btn-primary" id="reaction-tap" style="width:100%;padding:3rem;font-size:2rem;margin-top:1rem;">TRYCK!</button>
+        `;
+        document.getElementById('reaction-tap').addEventListener('click', async () => {
+          document.getElementById('reaction-tap').disabled = true;
+          document.getElementById('reaction-tap').textContent = 'Väntar...';
+          await DB.playerAction(roomCode, myId, { type: 'reaction-tap', tapTime: Date.now() });
+        });
+      } else if (event.phase === 'results') {
+        const resHtml = event.results.map(r =>
+          `<p style="${r.id === event.winnerId ? 'color:var(--green);font-weight:700;' : ''}">${r.name}: ${r.time}ms ${r.id === event.winnerId ? '🏆 +5 mynt' : ''}</p>`
+        ).join('');
+        bjArea.innerHTML = `<h3>⚡ Resultat</h3>${resHtml}`;
+      }
+      break;
+
+    // === AUCTION ===
+    case 'auction':
+      diceBtn.classList.add('hidden');
+      bjArea.classList.remove('hidden');
+      if (event.phase === 'bidding') {
+        const me = roomData?.players?.[myId];
+        const myCoinsNow = me?.coins || 0;
+        bjArea.innerHTML = `
+          <h3>💰 Auktion — 10 Poäng!</h3>
+          <p>Buda med dina mynt (du har <strong>${myCoinsNow}</strong>)</p>
+          <div style="display:flex;align-items:center;justify-content:center;gap:1rem;margin:1rem 0;">
+            <button class="btn-small" id="bid-down">−</button>
+            <span id="bid-amount" style="font-size:2.5rem;font-weight:900;color:var(--yellow);min-width:3rem;text-align:center;">0</span>
+            <button class="btn-small" id="bid-up">+</button>
+          </div>
+          <button class="btn-primary" id="bid-submit" style="width:100%;">Lägg bud</button>
+        `;
+        let bidVal = 0;
+        document.getElementById('bid-up').addEventListener('click', () => {
+          if (bidVal < myCoinsNow) { bidVal++; document.getElementById('bid-amount').textContent = bidVal; }
+        });
+        document.getElementById('bid-down').addEventListener('click', () => {
+          if (bidVal > 0) { bidVal--; document.getElementById('bid-amount').textContent = bidVal; }
+        });
+        document.getElementById('bid-submit').addEventListener('click', async () => {
+          bjArea.querySelectorAll('button').forEach(b => b.disabled = true);
+          await DB.playerAction(roomCode, myId, { type: 'auction-bid', amount: bidVal });
+          bjArea.innerHTML = `<h3>💰 Auktion</h3><p>Du bjöd <strong>${bidVal}</strong> mynt. Väntar...</p>`;
+        });
+      } else if (event.phase === 'results') {
+        const resHtml = event.bids.map(b =>
+          `<p style="${b.id === event.winnerId ? 'color:var(--green);font-weight:700;' : ''}">${b.name}: ${b.bid} mynt ${b.id === event.winnerId ? '🏆 +10 poäng!' : ''}</p>`
+        ).join('');
+        bjArea.innerHTML = `<h3>💰 Resultat</h3>${resHtml}`;
+      }
+      break;
+
+    // === GUESS THE NUMBER ===
+    case 'guessNumber':
+      diceBtn.classList.add('hidden');
+      bjArea.classList.remove('hidden');
+      if (event.phase === 'guessing') {
+        bjArea.innerHTML = `
+          <h3>🔢 Gissa talet (1–100)</h3>
+          <input type="number" id="guess-input" min="1" max="100" style="width:100%;padding:1rem;font-size:1.5rem;text-align:center;border-radius:12px;border:2px solid rgba(255,255,255,0.2);background:var(--surface);color:var(--text);font-family:inherit;margin:1rem 0;" placeholder="Ditt tal...">
+          <button class="btn-primary" id="guess-submit" style="width:100%;">Gissa!</button>
+        `;
+        document.getElementById('guess-submit').addEventListener('click', async () => {
+          const guess = parseInt(document.getElementById('guess-input').value) || 50;
+          bjArea.querySelectorAll('button').forEach(b => b.disabled = true);
+          await DB.playerAction(roomCode, myId, { type: 'guess-number', guess: Math.max(1, Math.min(100, guess)) });
+          bjArea.innerHTML = '<h3>🔢 Gissa talet</h3><p>Du gissade <strong>' + guess + '</strong>. Väntar...</p>';
+        });
+      } else if (event.phase === 'results') {
+        const resHtml = event.guesses.map(g =>
+          `<p style="${g.id === event.winnerId ? 'color:var(--green);font-weight:700;' : ''}">${g.name}: ${g.guess} (${g.diff} ifrån) ${g.id === event.winnerId ? '🏆 +3 poäng' : ''}</p>`
+        ).join('');
+        bjArea.innerHTML = `<h3>🔢 Rätt svar: ${event.secret}</h3>${resHtml}`;
+      }
+      break;
+
+    // === ROCK PAPER SCISSORS ===
+    case 'rps':
+      diceBtn.classList.add('hidden');
+      bjArea.classList.remove('hidden');
+      if (event.phase === 'choose') {
+        const isAlive = event.alivePlayers.includes(myId);
+        if (isAlive) {
+          bjArea.innerHTML = `
+            <h3>✊ Sten Sax Påse — Runda ${event.round}</h3>
+            <div style="display:flex;gap:1rem;justify-content:center;margin-top:1.5rem;">
+              <button class="btn-primary rps-btn" data-choice="rock" style="font-size:2.5rem;padding:1.5rem;">🪨</button>
+              <button class="btn-primary rps-btn" data-choice="scissors" style="font-size:2.5rem;padding:1.5rem;">✂️</button>
+              <button class="btn-primary rps-btn" data-choice="paper" style="font-size:2.5rem;padding:1.5rem;">📄</button>
+            </div>
+          `;
+          bjArea.querySelectorAll('.rps-btn').forEach(btn => {
+            btn.addEventListener('click', async () => {
+              bjArea.querySelectorAll('.rps-btn').forEach(b => b.disabled = true);
+              btn.style.transform = 'scale(1.2)';
+              await DB.playerAction(roomCode, myId, { type: 'rps-choice', choice: btn.dataset.choice });
+            });
+          });
+        } else {
+          bjArea.innerHTML = '<h3>✊ Sten Sax Påse</h3><p>Du är utslagen. Titta på!</p>';
+        }
+      } else if (event.phase === 'round-result') {
+        const choiceEmoji = { rock: '🪨', scissors: '✂️', paper: '📄' };
+        const resHtml = event.roundResults.map(r =>
+          `<p style="${r.eliminated ? 'opacity:0.4;text-decoration:line-through;' : 'font-weight:700;'}">${r.name}: ${choiceEmoji[r.choice] || r.choice} ${r.eliminated ? '❌' : '✅'}</p>`
+        ).join('');
+        bjArea.innerHTML = `<h3>✊ Runda ${event.round} — Resultat</h3>${resHtml}`;
+      } else if (event.phase === 'final') {
+        bjArea.innerHTML = `<h3>✊ ${event.winnerName} vinner! 🏆</h3><p>+8 mynt</p>`;
+      }
+      break;
+
+    // === BOMB TIMER ===
+    case 'bomb':
+      diceBtn.classList.add('hidden');
+      bjArea.classList.remove('hidden');
+      if (event.phase === 'ticking') {
+        const iHold = event.holderId === myId;
+        if (iHold) {
+          const others = event.players.filter(p => p.id !== myId);
+          bjArea.innerHTML = `
+            <h3>💣 Du håller bomben!</h3>
+            <p style="font-size:1.2rem;color:var(--red);font-weight:700;animation:pulse 0.5s infinite;">Skicka den vidare!</p>
+            <div style="display:flex;flex-direction:column;gap:0.5rem;margin-top:1rem;">
+              ${others.map(p => `<button class="btn-primary bomb-pass" data-target="${p.id}" style="padding:1rem;">${p.name}</button>`).join('')}
+            </div>
+          `;
+          bjArea.querySelectorAll('.bomb-pass').forEach(btn => {
+            btn.addEventListener('click', async () => {
+              bjArea.querySelectorAll('.bomb-pass').forEach(b => b.disabled = true);
+              await DB.playerAction(roomCode, myId, { type: 'bomb-pass', targetId: btn.dataset.target });
+              bjArea.innerHTML = '<h3>💣 Skickad!</h3><p>Väntar...</p>';
+            });
+          });
+        } else {
+          bjArea.innerHTML = `<h3>💣 Bomb-timer</h3><p style="font-size:1.3rem;">${event.holderName} håller bomben... 😰</p>`;
+        }
+      } else if (event.phase === 'exploded') {
+        const isMe = event.loserId === myId;
+        bjArea.innerHTML = `<h3>💥 BOOM!</h3><p style="font-size:1.5rem;font-weight:700;color:${isMe ? 'var(--red)' : 'var(--green)'}">${event.loserName} sprängdes! ${isMe ? '−3 poäng' : ''}</p>`;
+      }
+      break;
+
+    // === TAP FRENZY ===
+    case 'tapFrenzy':
+      diceBtn.classList.add('hidden');
+      bjArea.classList.remove('hidden');
+      if (event.phase === 'ready') {
+        bjArea.innerHTML = '<h3>👆 Snabb-klick</h3><p style="font-size:1.5rem;">Gör dig redo...</p>';
+      } else if (event.phase === 'go') {
+        let taps = 0;
+        bjArea.innerHTML = `
+          <h3>👆 TRYCK!</h3>
+          <p id="tap-count" style="font-size:3rem;font-weight:900;color:var(--accent);">0</p>
+          <button class="btn-primary" id="tap-btn" style="width:100%;padding:3rem;font-size:1.5rem;margin-top:0.5rem;">TRYCK TRYCK TRYCK!</button>
+        `;
+        const tapBtn = document.getElementById('tap-btn');
+        const tapCount = document.getElementById('tap-count');
+        const tapHandler = () => { taps++; tapCount.textContent = taps; };
+        tapBtn.addEventListener('click', tapHandler);
+        tapBtn.addEventListener('touchstart', (e) => { e.preventDefault(); tapHandler(); });
+        // Send tap count every 500ms
+        const tapInterval = setInterval(() => {
+          DB.playerAction(roomCode, myId, { type: 'tap-count', taps });
+        }, 500);
+        // After 5 sec, send final and stop
+        setTimeout(() => {
+          clearInterval(tapInterval);
+          tapBtn.disabled = true;
+          tapBtn.textContent = 'Klart!';
+          DB.playerAction(roomCode, myId, { type: 'tap-count', taps });
+        }, 5000);
+      } else if (event.phase === 'results') {
+        const resHtml = event.results.map(r =>
+          `<p style="${r.id === event.winnerId ? 'color:var(--green);font-weight:700;' : ''}">${r.name}: ${r.taps} tryck ${r.id === event.winnerId ? '🏆 +5 mynt' : ''}</p>`
+        ).join('');
+        bjArea.innerHTML = `<h3>👆 Resultat</h3>${resHtml}`;
       }
       break;
 
