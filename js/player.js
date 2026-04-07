@@ -144,7 +144,10 @@ function handleRoomUpdate(data) {
       myCoinsEl.textContent = `\u2699 ${me.coins || 0}`;
     }
 
-    // Update turn
+    // Update turn — reset rolledForTurn when turn changes
+    if (data.currentTurn !== currentTurnId) {
+      rolledForTurn = null;
+    }
     currentTurnId = data.currentTurn;
     const isMyTurn = data.currentTurn === myId;
     const hasEvent = !!data.currentEvent;
