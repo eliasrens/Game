@@ -31,6 +31,7 @@ const SHOP_ITEMS = [
   { id: 'stealPoints', name: 'Ta 5 Poäng', description: 'Ta bort 5 poäng från en valfri spelare', cost: 10, type: 'target' },
   { id: 'changeCategory', name: 'Byt kategori', description: 'Byt trivia-kategori till valfri', cost: 5, type: 'category' },
   { id: 'wheelSlice', name: 'Hjulfält', description: 'Lägg till en egen regel på Lyckohjulet', cost: 5, type: 'wheel' },
+  { id: 'clearWheel', name: 'Töm hjulet', description: 'Ta bort alla tillagda hjulfält', cost: 8, type: 'instant' },
   { id: 'sabotage', name: 'Sabotage', description: 'Frys en motståndares skärm i 5 sek', cost: 15, type: 'usable' },
   { id: 'shield', name: 'Sköld', description: 'Blockerar nästa negativa händelse', cost: 25, type: 'passive' }
 ];
@@ -521,6 +522,7 @@ class GameEngine {
       if (triggerAction.type === 'bj-continue') {
         db.ref(`rooms/${this.roomCode}/actions/${this._bjTriggerId}/processed`).set(true);
         this.stopListeningActions();
+        clearTimeout(this._bjDecideTimeout);
         this._bjRound++;
         this.startBlackjackBetting();
       } else if (triggerAction.type === 'bj-end') {
@@ -639,6 +641,12 @@ class GameEngine {
       if (!categoryId) return { error: 'Ingen kategori vald' };
       await DB.updatePlayer(this.roomCode, playerId, { coins: newCoins });
       await DB.updateRoom(this.roomCode, { activeCategory: categoryId });
+      return { success: true };
+    }
+
+    if (item.type === 'instant' && item.id === 'clearWheel') {
+      await DB.updatePlayer(this.roomCode, playerId, { coins: newCoins });
+      await db.ref(`rooms/${this.roomCode}/wheelCustomSlices`).remove();
       return { success: true };
     }
 

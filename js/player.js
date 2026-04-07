@@ -124,12 +124,6 @@ joinForm.addEventListener('submit', async (e) => {
 
 // === ROOM STATE LISTENER ===
 function handleRoomUpdate(data) {
-  // Visible debug (remove later)
-  let dbgEl = document.getElementById('debug-info');
-  if (!dbgEl) { dbgEl = document.createElement('div'); dbgEl.id = 'debug-info'; dbgEl.style.cssText = 'position:fixed;top:0;left:0;right:0;background:black;color:lime;font-size:10px;padding:4px;z-index:9999;'; document.body.appendChild(dbgEl); }
-  const _hasEv = !!data.currentEvent;
-  const _rolled = rolledForTurn === data.currentTurn;
-  dbgEl.textContent = `me:${myId?.slice(-5)} | turn:${data.currentTurn?.slice(-5)} | ev:${_hasEv} | rolled:${_rolled}`;
   // Game started?
   if (data.state === 'playing' || data.state === 'minigame') {
     if (!document.getElementById('game-screen').classList.contains('active')) {
