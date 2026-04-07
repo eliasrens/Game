@@ -122,10 +122,15 @@ class GameEngine {
       coins: (player.coins || 0) + coinBonus
     };
 
-    // Track laps per player
+    // Track laps per player — only first to reach a new lap number chooses category
     if (lapped) {
-      updates.laps = (player.laps || 0) + 1;
-      this._pendingCategoryChoice = player.id;
+      const newLap = (player.laps || 0) + 1;
+      updates.laps = newLap;
+      const categoryChosenForLap = this.room.categoryChosenForLap || 0;
+      if (newLap > categoryChosenForLap) {
+        this._pendingCategoryChoice = player.id;
+        await DB.updateRoom(this.roomCode, { categoryChosenForLap: newLap });
+      }
     }
 
     await DB.updatePlayer(this.roomCode, player.id, updates);

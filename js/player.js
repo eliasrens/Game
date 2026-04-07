@@ -187,7 +187,7 @@ function handleRoomUpdate(data) {
     rulesDisplay.innerHTML = ruleEntries.map(([key, r]) =>
       `<div class="rule-row">
         <p>${r.text} <span class="rule-author">— ${r.addedBy}</span></p>
-        <button class="btn-small rule-remove" data-key="${key}" style="font-size:0.7rem;padding:0.3rem 0.6rem;background:var(--red);">Ta bort (8💰)</button>
+        <button class="rule-remove" data-key="${key}">❌ 8💰</button>
       </div>`
     ).join('');
     rulesDisplay.querySelectorAll('.rule-remove').forEach(btn => {
