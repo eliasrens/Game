@@ -35,7 +35,7 @@ const DB = {
     await db.ref(`rooms/${code}/players/${playerId}`).set({
       name,
       color,
-      emoji: emoji || '\uD83C\uDFB2',
+      emoji: emoji || '🎲',
       position: 0,
       points: 0,
       coins: 0,

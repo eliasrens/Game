@@ -24,6 +24,21 @@ body { max-width: 480px; margin: 0 auto; }
   min-height: 100vh; text-align: center; gap: 1rem;
 }
 .player-name-display { font-size: 2rem; font-weight: 700; color: var(--accent); text-shadow: 0 0 15px rgba(52,152,219,0.3); }
+.emoji-picker {
+  display: flex; flex-wrap: wrap; gap: 0.5rem; justify-content: center;
+  max-width: 320px; margin: 0.5rem auto;
+}
+.emoji-option {
+  font-size: 2rem; width: 3.2rem; height: 3.2rem;
+  display: flex; align-items: center; justify-content: center;
+  border: 2px solid rgba(255,255,255,0.1); border-radius: 12px;
+  background: var(--surface); cursor: pointer; transition: all 0.2s;
+}
+.emoji-option:active { transform: scale(0.9); }
+.emoji-option.selected {
+  border-color: var(--accent); background: rgba(52,152,219,0.3);
+  box-shadow: 0 0 12px rgba(52,152,219,0.4); transform: scale(1.1);
+}
 .waiting-text { color: var(--text-dim); animation: pulse 2s ease-in-out infinite; }
 @keyframes pulse { 0%,100%{opacity:0.5} 50%{opacity:1} }
 

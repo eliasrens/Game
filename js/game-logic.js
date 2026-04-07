@@ -25,7 +25,7 @@ const BOARD = [
 ];
 
 const PLAYER_COLORS = ['#e74c3c','#3498db','#2ecc71','#f1c40f','#9b59b6','#e67e22','#1abc9c','#fd79a8'];
-const PLAYER_EMOJIS = ['\uD83C\uDF7B','\uD83E\uDD20','\uD83D\uDC7D','\uD83D\uDE08','\uD83E\uDD73','\uD83D\uDC80','\uD83E\uDD16','\uD83C\uDF1F'];
+const PLAYER_EMOJIS = ['🍻','🤠','👽','🦊','🥳','💀','🤖','🌟','🎸','🐸','🔥','🍕','🦄','🐶','🎃','🧠'];
 
 const SHOP_ITEMS = [
   { id: 'buyPoints', name: 'Köp 5 Poäng', description: 'Köp 5 poäng direkt', cost: 10, type: 'instant' },

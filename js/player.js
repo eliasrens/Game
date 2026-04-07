@@ -100,17 +100,20 @@ joinForm.addEventListener('submit', async (e) => {
       loadShop();
     } else {
       switchScreen('waiting');
+      const existingEmoji = room.players[existingId]?.emoji || '🎲';
+      buildEmojiPicker(existingEmoji);
     }
   } else {
     // Brand new player
     myId = 'player_' + Math.random().toString(36).substr(2, 9);
     const count = await DB.getPlayerCount(code);
     const color = PLAYER_COLORS[count];
-    const emoji = PLAYER_EMOJIS[count] || '\uD83C\uDFB2';
+    const emoji = PLAYER_EMOJIS[count] || '🎲';
     await DB.joinRoom(code, myId, name, color, emoji);
     DB.onPlayerDisconnect(code, myId);
     playerNameDisplay.textContent = name;
     switchScreen('waiting');
+    buildEmojiPicker(emoji);
   }
 
   // Listen to room state
@@ -429,7 +432,7 @@ function handleEvent(event, roomData) {
         <div class="game-over-mobile">
           <h2>Spelet är slut!</h2>
           <div class="mobile-winner">
-            <span class="crown">\uD83D\uDC51</span>
+            <span class="crown">👑</span>
             <span style="color:${event.winner.color}">${event.winner.name}</span>
             <span>vann med ${event.winner.points || 0} poäng!</span>
           </div>
@@ -535,6 +538,23 @@ async function buyItem(itemId) {
   await DB.updatePlayer(roomCode, myId, { coins: me.coins - item.cost, items });
 }
 
+// === EMOJI PICKER ===
+function buildEmojiPicker(selectedEmoji) {
+  const picker = document.getElementById('emoji-picker');
+  if (!picker) return;
+  picker.innerHTML = PLAYER_EMOJIS.map(e =>
+    `<button class="emoji-option ${e === selectedEmoji ? 'selected' : ''}" data-emoji="${e}">${e}</button>`
+  ).join('');
+  picker.addEventListener('click', async (ev) => {
+    const btn = ev.target.closest('.emoji-option');
+    if (!btn) return;
+    const emoji = btn.dataset.emoji;
+    picker.querySelectorAll('.emoji-option').forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected');
+    await DB.updatePlayer(roomCode, myId, { emoji });
+  });
+}
+
 function renderInventory(items) {
   const active = (items || []).filter(i => !i.usedAt);
   if (active.length === 0) {
@@ -582,7 +602,7 @@ function showFreeze(byName) {
   el.className = 'freeze-overlay';
   el.innerHTML = `
     <div class="freeze-content">
-      <div class="freeze-icon">\uD83E\uDD76</div>
+      <div class="freeze-icon">🥶</div>
       <p>Saboterad av ${byName}!</p>
       <p class="freeze-timer">5</p>
     </div>

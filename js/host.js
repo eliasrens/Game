@@ -259,7 +259,7 @@ function handleEvent(event, players) {
                 <div class="player-dot" style="background:${r.color}"></div>
                 <span>${r.name}</span>
                 <span class="bj-cards-small">${r.hand.map(c => c.rank+c.suit).join(' ')} (${r.bet} insats)</span>
-                <span class="bj-total">${r.total} ${r.bust ? '\uD83D\uDCA5' : r.won ? '\u2713 +' + r.coinGain + ' mynt' : r.push ? 'Oavgjort' : '\u2717'}</span>
+                <span class="bj-total">${r.total} ${r.bust ? '💥' : r.won ? '\u2713 +' + r.coinGain + ' mynt' : r.push ? 'Oavgjort' : '\u2717'}</span>
               </div>
             `).join('')}
           </div>
@@ -269,7 +269,7 @@ function handleEvent(event, players) {
       break;
 
     case 'sabotage':
-      showToast(`${event.fromName} saboterade ${event.targetName}! \uD83D\uDCA3`);
+      showToast(`${event.fromName} saboterade ${event.targetName}! 💣`);
       break;
 
     case 'shield-used':
@@ -281,7 +281,7 @@ function handleEvent(event, players) {
       overlayContent.innerHTML = `
         <h2>Spelet är slut!</h2>
         <div class="game-over-winner">
-          <div class="winner-crown">\uD83D\uDC51</div>
+          <div class="winner-crown">👑</div>
           <div class="winner-name" style="color:${event.winner.color}">${event.winner.name}</div>
           <div class="winner-points">${event.winner.points || 0} poäng</div>
         </div>
@@ -337,7 +337,7 @@ function switchScreen(name) {
 function renderScoreboard(players, currentTurn) {
   scoreboard.innerHTML = players.map(p => `
     <div class="score-card ${p.id === currentTurn ? 'active-turn' : ''}">
-      <span class="score-emoji">${p.emoji || '\uD83C\uDFB2'}</span>
+      <span class="score-emoji">${p.emoji || '🎲'}</span>
       <span>${p.name}</span>
       <span class="score-points">\u2605 ${p.points || 0}</span>
       <span class="score-coins">\u2699 ${p.coins || 0}</span>
@@ -361,7 +361,7 @@ function renderPieces(players) {
     pls.forEach(p => {
       const piece = document.createElement('div');
       piece.className = 'piece';
-      piece.textContent = p.emoji || '\uD83C\uDFB2';
+      piece.textContent = p.emoji || '🎲';
       piece.title = p.name;
       container.appendChild(piece);
     });
