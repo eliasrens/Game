@@ -112,12 +112,10 @@ function renderFromState(data) {
   }
 
   // House rules
-  if (data.houseRules) {
-    const rules = Object.values(data.houseRules);
-    rulesList.innerHTML = rules.map(r => `
-      <li>${r.text}<div class="rule-author">— ${r.addedBy}</div></li>
-    `).join('');
-  }
+  const rules = data.houseRules ? Object.values(data.houseRules) : [];
+  rulesList.innerHTML = rules.map(r => `
+    <li>${r.text}<div class="rule-author">— ${r.addedBy}</div></li>
+  `).join('');
 }
 
 // === EVENT HANDLER ===
