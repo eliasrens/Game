@@ -117,15 +117,18 @@ class GameEngine {
     const lapped = newPos < oldPos;
     if (lapped) coinBonus += 5;
 
-    await DB.updatePlayer(this.roomCode, player.id, {
+    const updates = {
       position: newPos,
       coins: (player.coins || 0) + coinBonus
-    });
+    };
 
-    // If player lapped, let them choose a trivia category
+    // Track laps per player
     if (lapped) {
+      updates.laps = (player.laps || 0) + 1;
       this._pendingCategoryChoice = player.id;
     }
+
+    await DB.updatePlayer(this.roomCode, player.id, updates);
 
     await DB.pushEvent(this.roomCode, {
       type: 'dice-rolled',
@@ -1075,15 +1078,18 @@ class GameEngine {
     this._bombTimeout = setTimeout(async () => {
       this.stopListeningActions();
       const loser = players.find(p => p.id === this._bombHolder);
+      let lostPoints = 0;
       if (loser) {
+        lostPoints = Math.floor((loser.points || 0) / 2);
         await DB.updatePlayer(this.roomCode, this._bombHolder, {
-          points: Math.max(0, (loser.points || 0) - 3)
+          points: (loser.points || 0) - lostPoints
         });
       }
       await DB.pushEvent(this.roomCode, {
         type: 'bomb', phase: 'exploded',
         loserId: this._bombHolder,
-        loserName: loser?.name || '?'
+        loserName: loser?.name || '?',
+        lostPoints
       });
       await DB.clearActions(this.roomCode);
       setTimeout(() => this.advanceTurn(), 3000);
@@ -1113,13 +1119,15 @@ class GameEngine {
 
         results.sort((a, b) => b.taps - a.taps);
         const winner = results[0];
+        const second = results[1];
+        const reward = winner && second ? winner.taps - second.taps : (winner?.taps || 0);
 
-        if (winner && winner.taps > 0) {
+        if (winner && reward > 0) {
           const p = players.find(x => x.id === winner.id);
-          await DB.updatePlayer(this.roomCode, winner.id, { coins: (p?.coins || 0) + 5 });
+          await DB.updatePlayer(this.roomCode, winner.id, { coins: (p?.coins || 0) + reward });
         }
 
-        await DB.pushEvent(this.roomCode, { type: 'tapFrenzy', phase: 'results', results, winnerId: winner?.id });
+        await DB.pushEvent(this.roomCode, { type: 'tapFrenzy', phase: 'results', results, winnerId: winner?.id, reward });
         await DB.clearActions(this.roomCode);
         setTimeout(() => this.advanceTurn(), 3000);
       }, 5000); // 5 sec of tapping

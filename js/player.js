@@ -183,10 +183,22 @@ function handleRoomUpdate(data) {
 
   // House rules
   if (data.houseRules) {
-    const rules = Object.values(data.houseRules);
-    rulesDisplay.innerHTML = rules.map(r =>
-      `<p>${r.text} <span class="rule-author">— ${r.addedBy}</span></p>`
+    const ruleEntries = Object.entries(data.houseRules);
+    rulesDisplay.innerHTML = ruleEntries.map(([key, r]) =>
+      `<div class="rule-row">
+        <p>${r.text} <span class="rule-author">— ${r.addedBy}</span></p>
+        <button class="btn-small rule-remove" data-key="${key}" style="font-size:0.7rem;padding:0.3rem 0.6rem;background:var(--red);">Ta bort (8💰)</button>
+      </div>`
     ).join('');
+    rulesDisplay.querySelectorAll('.rule-remove').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const room = await DB.getRoom(roomCode);
+        const me = room?.players?.[myId];
+        if (!me || (me.coins || 0) < 8) { alert('Kostar 8 mynt!'); return; }
+        await DB.updatePlayer(roomCode, myId, { coins: me.coins - 8 });
+        await db.ref(`rooms/${roomCode}/houseRules/${btn.dataset.key}`).remove();
+      });
+    });
   }
 }
 
@@ -569,7 +581,7 @@ function handleEvent(event, roomData) {
         }
       } else if (event.phase === 'exploded') {
         const isMe = event.loserId === myId;
-        bjArea.innerHTML = `<h3>💥 BOOM!</h3><p style="font-size:1.5rem;font-weight:700;color:${isMe ? 'var(--red)' : 'var(--green)'}">${event.loserName} sprängdes! ${isMe ? '−3 poäng' : ''}</p>`;
+        bjArea.innerHTML = `<h3>💥 BOOM!</h3><p style="font-size:1.5rem;font-weight:700;color:${isMe ? 'var(--red)' : 'var(--green)'}">${event.loserName} sprängdes! −${event.lostPoints} poäng</p>`;
       }
       break;
 
@@ -604,7 +616,7 @@ function handleEvent(event, roomData) {
         }, 5000);
       } else if (event.phase === 'results') {
         const resHtml = event.results.map(r =>
-          `<p style="${r.id === event.winnerId ? 'color:var(--green);font-weight:700;' : ''}">${r.name}: ${r.taps} tryck ${r.id === event.winnerId ? '🏆 +5 mynt' : ''}</p>`
+          `<p style="${r.id === event.winnerId ? 'color:var(--green);font-weight:700;' : ''}">${r.name}: ${r.taps} tryck ${r.id === event.winnerId ? '🏆 +' + event.reward + ' mynt' : ''}</p>`
         ).join('');
         bjArea.innerHTML = `<h3>👆 Resultat</h3>${resHtml}`;
       }

@@ -188,7 +188,8 @@ body { max-width: 480px; margin: 0 auto; }
 
 /* RULES */
 .rules-display { margin-bottom: 1rem; }
-.rules-display p { padding: 0.5rem 0; border-bottom: 1px solid rgba(255,255,255,0.08); font-size: 0.95rem; }
+.rule-row { display: flex; justify-content: space-between; align-items: center; padding: 0.5rem 0; border-bottom: 1px solid rgba(255,255,255,0.08); gap: 0.5rem; }
+.rule-row p { font-size: 0.95rem; margin: 0; }
 .rules-display .rule-author { color: var(--text-dim); font-size: 0.8rem; }
 .rule-form { display: flex; gap: 0.5rem; }
 .rule-form input {

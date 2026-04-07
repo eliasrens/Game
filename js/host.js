@@ -353,7 +353,7 @@ function handleEvent(event, players) {
       if (event.phase === 'ticking') {
         overlayContent.innerHTML = `<h2>💣 Bomb-timer!</h2><p style="font-size:2rem;">${event.holderName} håller bomben! 😰</p>`;
       } else if (event.phase === 'exploded') {
-        overlayContent.innerHTML = `<h2 style="font-size:3rem;">💥 BOOM!</h2><p style="font-size:1.5rem;">${event.loserName} sprängdes! −3 poäng</p>`;
+        overlayContent.innerHTML = `<h2 style="font-size:3rem;">💥 BOOM!</h2><p style="font-size:1.5rem;">${event.loserName} sprängdes! −${event.lostPoints} poäng</p>`;
         setTimeout(() => overlay.classList.add('hidden'), 3000);
       }
       break;
@@ -446,6 +446,7 @@ function renderScoreboard(players, currentTurn) {
       <span>${p.name}</span>
       <span class="score-points">\u2605 ${p.points || 0}</span>
       <span class="score-coins">\u2699 ${p.coins || 0}</span>
+      <span class="score-laps">🔄 ${p.laps || 0}</span>
     </div>
   `).join('');
 }
