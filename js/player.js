@@ -124,6 +124,7 @@ joinForm.addEventListener('submit', async (e) => {
 
 // === ROOM STATE LISTENER ===
 function handleRoomUpdate(data) {
+  console.log('[DEBUG] state:', data.state, 'myId:', myId, 'currentTurn:', data.currentTurn);
   // Game started?
   if (data.state === 'playing' || data.state === 'minigame') {
     if (!document.getElementById('game-screen').classList.contains('active')) {
