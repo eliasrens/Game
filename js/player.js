@@ -124,7 +124,10 @@ joinForm.addEventListener('submit', async (e) => {
 
 // === ROOM STATE LISTENER ===
 function handleRoomUpdate(data) {
-  console.log('[DEBUG] state:', data.state, 'myId:', myId, 'currentTurn:', data.currentTurn);
+  // Visible debug (remove later)
+  let dbgEl = document.getElementById('debug-info');
+  if (!dbgEl) { dbgEl = document.createElement('div'); dbgEl.id = 'debug-info'; dbgEl.style.cssText = 'position:fixed;top:0;left:0;right:0;background:black;color:lime;font-size:10px;padding:4px;z-index:9999;'; document.body.appendChild(dbgEl); }
+  dbgEl.textContent = `myId:${myId} | turn:${data.currentTurn} | match:${data.currentTurn === myId}`;
   // Game started?
   if (data.state === 'playing' || data.state === 'minigame') {
     if (!document.getElementById('game-screen').classList.contains('active')) {
