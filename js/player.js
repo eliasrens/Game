@@ -150,10 +150,8 @@ function handleRoomUpdate(data) {
     }
     currentTurnId = data.currentTurn;
     const isMyTurn = data.currentTurn === myId;
-    const hasEvent = !!data.currentEvent;
     const alreadyRolled = rolledForTurn === data.currentTurn;
-    const canRoll = isMyTurn && !hasEvent && !alreadyRolled;
-    console.log('[TURN DEBUG] myId:', myId, 'turn:', data.currentTurn, 'isMyTurn:', isMyTurn, 'hasEvent:', hasEvent, 'alreadyRolled:', alreadyRolled, 'canRoll:', canRoll);
+    const canRoll = isMyTurn && !alreadyRolled;
 
     diceBtn.disabled = !canRoll;
 
