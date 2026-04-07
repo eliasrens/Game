@@ -127,7 +127,9 @@ function handleRoomUpdate(data) {
   // Visible debug (remove later)
   let dbgEl = document.getElementById('debug-info');
   if (!dbgEl) { dbgEl = document.createElement('div'); dbgEl.id = 'debug-info'; dbgEl.style.cssText = 'position:fixed;top:0;left:0;right:0;background:black;color:lime;font-size:10px;padding:4px;z-index:9999;'; document.body.appendChild(dbgEl); }
-  dbgEl.textContent = `myId:${myId} | turn:${data.currentTurn} | match:${data.currentTurn === myId}`;
+  const _hasEv = !!data.currentEvent;
+  const _rolled = rolledForTurn === data.currentTurn;
+  dbgEl.textContent = `me:${myId?.slice(-5)} | turn:${data.currentTurn?.slice(-5)} | ev:${_hasEv} | rolled:${_rolled}`;
   // Game started?
   if (data.state === 'playing' || data.state === 'minigame') {
     if (!document.getElementById('game-screen').classList.contains('active')) {
@@ -145,10 +147,10 @@ function handleRoomUpdate(data) {
     // Update turn
     currentTurnId = data.currentTurn;
     const isMyTurn = data.currentTurn === myId;
-    console.log('[TURN DEBUG] myId:', myId, 'currentTurn:', data.currentTurn, 'isMyTurn:', isMyTurn);
     const hasEvent = !!data.currentEvent;
     const alreadyRolled = rolledForTurn === data.currentTurn;
     const canRoll = isMyTurn && !hasEvent && !alreadyRolled;
+    console.log('[TURN DEBUG] myId:', myId, 'turn:', data.currentTurn, 'isMyTurn:', isMyTurn, 'hasEvent:', hasEvent, 'alreadyRolled:', alreadyRolled, 'canRoll:', canRoll);
 
     diceBtn.disabled = !canRoll;
 
