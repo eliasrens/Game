@@ -266,6 +266,78 @@ function handleEvent(event, players) {
       }
       break;
 
+    // === HIGHER OR LOWER ===
+    case 'higherLower': {
+      overlay.classList.remove('hidden');
+      if (event.phase === 'betting') {
+        overlayContent.innerHTML = `
+          <h2>🔼 Högre eller Lägre — Runda ${event.round} 🔽</h2>
+          <p style="font-size:1.3rem;">Satsa mynt på telefonen!</p>
+          <p style="margin-top:1rem;color:var(--text-dim);font-size:1.1rem;">Spelarna placerar sina insatser...</p>
+          <div class="timer-bar" id="hl-bet-timer"></div>
+        `;
+        const tb = document.getElementById('hl-bet-timer');
+        if (tb) {
+          tb.style.width = '100%';
+          requestAnimationFrame(() => { tb.style.width = '0%'; tb.style.transitionDuration = '15s'; });
+        }
+      } else if (event.phase === 'choosing') {
+        const dc = event.dealerCard;
+        const totalPot = Object.values(event.playerBets || {}).reduce((s, v) => s + v, 0);
+        const choices = event.playerChoices || {};
+        overlayContent.innerHTML = `
+          <h2>🔼 Högre eller Lägre — Runda ${event.round} 🔽</h2>
+          <p style="color:var(--yellow);font-size:1.1rem;">Pott: ${totalPot} mynt</p>
+          <h3>Dealer</h3>
+          <div class="bj-cards"><span class="bj-card">${dc.rank}${dc.suit}</span><span class="bj-card hidden-card">?</span></div>
+          <div class="bj-players-grid" style="margin-top:1.5rem;">
+            ${players.map(p => {
+              const bet = event.playerBets?.[p.id] || 0;
+              const choice = choices[p.id];
+              const choiceLabel = choice === 'higher' ? '🔼 HÖGRE' : choice === 'lower' ? '🔽 LÄGRE' : 'Väljer...';
+              return `<div class="bj-player-box" style="border-color:${p.color}">
+                <span class="bj-player-name">${p.name}</span>
+                <span>Insats: ${bet}</span>
+                <span class="bj-player-status ${choice ? 'stand' : ''}">${choiceLabel}</span>
+              </div>`;
+            }).join('')}
+          </div>
+          <p style="margin-top:1rem;color:var(--text-dim);">Gissa på era telefoner!</p>
+        `;
+      } else if (event.phase === 'results') {
+        const dc = event.dealerCard;
+        const fc = event.flipCard;
+        const triggerPlayer = players.find(p => p.id === event.triggerId);
+        const dirText = event.actualDir === 'higher' ? 'HÖGRE 🔼' : event.actualDir === 'lower' ? 'LÄGRE 🔽' : 'LIKA';
+        overlayContent.innerHTML = `
+          <h2>🔼 Resultat — Runda ${event.round} 🔽</h2>
+          <div class="bj-cards" style="font-size:2rem;">
+            <span class="bj-card">${dc.rank}${dc.suit}</span>
+            <span style="align-self:center;font-size:2rem;">→</span>
+            <span class="bj-card">${fc.rank}${fc.suit}</span>
+          </div>
+          <p style="margin-top:0.5rem;font-size:1.2rem;">Det blev <strong>${dirText}</strong></p>
+          <div class="bj-results">
+            ${event.results.map(r => {
+              const choiceLabel = r.choice === 'higher' ? '🔼' : r.choice === 'lower' ? '🔽' : '—';
+              const outLabel = r.outcome === 'won' ? '\u2713 +' + r.coinGain + ' mynt'
+                : r.outcome === 'lost' ? '\u2717 -' + r.bet
+                : r.outcome === 'push' ? 'Oavgjort'
+                : 'Inget val';
+              return `<div class="bj-result-row ${r.outcome === 'won' ? 'winner' : r.outcome === 'lost' ? 'loser' : ''}">
+                <div class="player-dot" style="background:${r.color}"></div>
+                <span>${r.name}</span>
+                <span class="bj-cards-small">${choiceLabel} (${r.bet} insats)</span>
+                <span class="bj-total">${outLabel}</span>
+              </div>`;
+            }).join('')}
+          </div>
+          <p style="margin-top:1rem;color:var(--text-dim);">${triggerPlayer ? triggerPlayer.name + ' bestämmer...' : 'Väntar...'}</p>
+        `;
+      }
+      break;
+    }
+
     // === REACTION TEST ===
     case 'reaction':
       overlay.classList.remove('hidden');

@@ -9,7 +9,8 @@ const AVAILABLE_MINIGAMES = [
   { id: 'guessNumber', name: 'Gissa talet', icon: '🔢', description: 'Närmast hemliga talet vinner!' },
   { id: 'rps', name: 'Sten Sax Påse', icon: '✊', description: 'Klassikern! Sista kvar vinner.' },
   { id: 'bomb', name: 'Bomb-timer', icon: '💣', description: 'Skicka bomben vidare innan den smäller!' },
-  { id: 'tapFrenzy', name: 'Snabb-klick', icon: '👆', description: 'Tryck så snabbt du kan på 5 sekunder!' }
+  { id: 'tapFrenzy', name: 'Snabb-klick', icon: '👆', description: 'Tryck så snabbt du kan på 5 sekunder!' },
+  { id: 'higherLower', name: 'Högre eller Lägre', icon: '🔼', description: 'Satsa mynt och gissa nästa kort!' }
 ];
 
 const BOARD = [
@@ -47,7 +48,8 @@ const WHEEL_SLICES = [
   { text: '+2 Poäng', effect: { type: 'points', value: 2 } },
   { text: '-5 Mynt', effect: { type: 'coins', value: -5 } },
   { text: 'Alla får +1 Poäng', effect: { type: 'pointsAll', value: 1 } },
-  { text: 'Dubbla dina mynt!', effect: { type: 'doubleCoins' } }
+  { text: 'Dubbla dina mynt!', effect: { type: 'doubleCoins' } },
+  { text: 'Ring en från Umeå!', effect: { type: 'social' } }
 ];
 
 // ============ GAME ENGINE (runs on host) ============
@@ -581,6 +583,241 @@ class GameEngine {
     return total;
   }
 
+  // === HIGHER OR LOWER ===
+
+  hlCardValue(card) {
+    if (card.rank === 'A') return 14;
+    if (card.rank === 'K') return 13;
+    if (card.rank === 'Q') return 12;
+    if (card.rank === 'J') return 11;
+    return parseInt(card.rank);
+  }
+
+  async startHigherLower() {
+    this._hlRound = 1;
+    this._hlTriggerId = this.room.currentTurn;
+    await this.startHigherLowerBetting();
+  }
+
+  // Phase 1: Betting
+  async startHigherLowerBetting() {
+    await DB.clearActions(this.roomCode);
+
+    await DB.pushEvent(this.roomCode, {
+      type: 'higherLower',
+      phase: 'betting',
+      round: this._hlRound,
+      minBet: 1,
+      maxBet: 15
+    });
+
+    this.listenForActions((actions) => {
+      this.handleHLBets(actions);
+    });
+
+    this._hlBetTimeout = setTimeout(() => {
+      this.startHLChoosing();
+    }, 15000);
+  }
+
+  async handleHLBets(actions) {
+    const players = this.getPlayersArray();
+    const bets = {};
+    let betCount = 0;
+
+    for (const [playerId, action] of Object.entries(actions)) {
+      if (action.type === 'hl-bet' && !action.processed) {
+        bets[playerId] = action.amount || 0;
+        betCount++;
+      }
+    }
+
+    if (betCount >= players.length) {
+      clearTimeout(this._hlBetTimeout);
+      await this.startHLChoosing(bets);
+    }
+  }
+
+  // Phase 2: Reveal dealer card, players choose higher/lower
+  async startHLChoosing(bets) {
+    this.stopListeningActions();
+
+    const players = this.getPlayersArray();
+    const deck = this.createDeck();
+    const dealerCard = deck.pop();
+
+    if (!bets) {
+      const room = await DB.getRoom(this.roomCode);
+      const actions = room?.actions || {};
+      bets = {};
+      for (const [playerId, action] of Object.entries(actions)) {
+        if (action.type === 'hl-bet') {
+          bets[playerId] = action.amount || 0;
+        }
+      }
+    }
+
+    // Deduct bets, store
+    const playerBets = {};
+    for (const p of players) {
+      const bet = Math.min(bets[p.id] || 0, p.coins || 0);
+      playerBets[p.id] = bet;
+      if (bet > 0) {
+        await DB.updatePlayer(this.roomCode, p.id, { coins: (p.coins || 0) - bet });
+      }
+    }
+
+    await DB.clearActions(this.roomCode);
+
+    await DB.pushEvent(this.roomCode, {
+      type: 'higherLower',
+      phase: 'choosing',
+      round: this._hlRound,
+      deck,
+      dealerCard,
+      playerBets,
+      playerChoices: {}
+    });
+
+    this.listenForActions((actions) => {
+      this.handleHLChoices(actions);
+    });
+
+    // Auto-resolve after 15 seconds
+    this._hlChoiceTimeout = setTimeout(async () => {
+      const room = await DB.getRoom(this.roomCode);
+      const event = room?.currentEvent;
+      if (event && event.type === 'higherLower' && event.phase === 'choosing') {
+        await this.resolveHigherLower(event);
+      }
+    }, 15000);
+  }
+
+  async handleHLChoices(actions) {
+    const event = this.room.currentEvent;
+    if (!event || event.type !== 'higherLower' || event.phase !== 'choosing') return;
+
+    const players = this.getPlayersArray();
+    const playerChoices = { ...(event.playerChoices || {}) };
+    let changed = false;
+
+    for (const [playerId, action] of Object.entries(actions)) {
+      if (action.type !== 'hl-choice' || action.processed) continue;
+      if (playerChoices[playerId]) continue;
+      if (action.choice !== 'higher' && action.choice !== 'lower') continue;
+
+      playerChoices[playerId] = action.choice;
+      await db.ref(`rooms/${this.roomCode}/actions/${playerId}/processed`).set(true);
+      changed = true;
+    }
+
+    if (changed) {
+      const updatedEvent = { ...event, playerChoices };
+      await DB.pushEvent(this.roomCode, updatedEvent);
+
+      const allDone = players.every(p => playerChoices[p.id]);
+      if (allDone) {
+        clearTimeout(this._hlChoiceTimeout);
+        this.stopListeningActions();
+        await this.resolveHigherLower(updatedEvent);
+      }
+    }
+  }
+
+  // Phase 3: Reveal next card, payout
+  async resolveHigherLower(event) {
+    this.stopListeningActions();
+    clearTimeout(this._hlChoiceTimeout);
+
+    const deck = [...event.deck];
+    const dealerCard = event.dealerCard;
+    const playerBets = event.playerBets || {};
+    const playerChoices = event.playerChoices || {};
+    const flipCard = deck.pop();
+
+    const dealerVal = this.hlCardValue(dealerCard);
+    const flipVal = this.hlCardValue(flipCard);
+    const actualDir = flipVal > dealerVal ? 'higher' : flipVal < dealerVal ? 'lower' : 'tie';
+
+    const players = this.getPlayersArray();
+    const results = [];
+
+    for (const p of players) {
+      const bet = playerBets[p.id] || 0;
+      const choice = playerChoices[p.id] || null;
+
+      let outcome; // 'won' | 'lost' | 'push' | 'noplay'
+      let coinGain = 0;
+
+      if (!choice) {
+        outcome = 'noplay';
+        // Refund bet (didn't get to choose)
+        coinGain = bet;
+      } else if (actualDir === 'tie') {
+        outcome = 'push';
+        coinGain = bet;
+      } else if (choice === actualDir) {
+        outcome = 'won';
+        coinGain = bet * 2;
+      } else {
+        outcome = 'lost';
+        coinGain = 0;
+      }
+
+      if (coinGain > 0) {
+        await DB.updatePlayer(this.roomCode, p.id, {
+          coins: (p.coins || 0) + coinGain
+        });
+      }
+
+      results.push({
+        id: p.id, name: p.name, color: p.color,
+        bet, choice, outcome, coinGain
+      });
+    }
+
+    await DB.pushEvent(this.roomCode, {
+      type: 'higherLower',
+      phase: 'results',
+      round: this._hlRound,
+      dealerCard,
+      flipCard,
+      actualDir,
+      results,
+      triggerId: this._hlTriggerId
+    });
+
+    await DB.clearActions(this.roomCode);
+    this.listenForActions((actions) => {
+      const triggerAction = actions[this._hlTriggerId];
+      if (!triggerAction || triggerAction.processed) return;
+
+      if (triggerAction.type === 'hl-continue') {
+        db.ref(`rooms/${this.roomCode}/actions/${this._hlTriggerId}/processed`).set(true);
+        this.stopListeningActions();
+        clearTimeout(this._hlDecideTimeout);
+        this._hlRound++;
+        this.startHigherLowerBetting();
+      } else if (triggerAction.type === 'hl-end') {
+        db.ref(`rooms/${this.roomCode}/actions/${this._hlTriggerId}/processed`).set(true);
+        this.stopListeningActions();
+        this.endHigherLower();
+      }
+    });
+
+    this._hlDecideTimeout = setTimeout(() => {
+      this.stopListeningActions();
+      this.endHigherLower();
+    }, 15000);
+  }
+
+  async endHigherLower() {
+    clearTimeout(this._hlDecideTimeout);
+    await DB.clearActions(this.roomCode);
+    await DB.clearEvent(this.roomCode);
+    this.advanceTurn();
+  }
+
   // === SABOTAGE ===
 
   async useSabotage(fromPlayerId, targetPlayerId) {
@@ -777,6 +1014,7 @@ class GameEngine {
       case 'rps': await this.startRPS(); break;
       case 'bomb': await this.startBomb(); break;
       case 'tapFrenzy': await this.startTapFrenzy(); break;
+      case 'higherLower': await this.startHigherLower(); break;
       default: await this.startBlackjack();
     }
   }
